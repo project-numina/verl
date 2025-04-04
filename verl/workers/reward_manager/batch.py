@@ -58,7 +58,7 @@ class BatchRewardManager:
         data.batch['acc'] = torch.tensor(scores, dtype=torch.float32, device=prompt_ids.device)
         return scores
 
-    def __call__(self, data: DataProto):
+    def __call__(self, data: DataProto, return_dict: bool = False):
         if 'rm_scores' in data.batch.keys():
             return data.batch['rm_scores']
 
@@ -88,4 +88,7 @@ class BatchRewardManager:
                 print("[score]", scores[i])
                 already_printed[data_source] = already_printed.get(data_source, 0) + 1
 
-        return reward_tensor
+        if return_dict:
+            return {"reward_tensor": reward_tensor}
+        else:
+            return reward_tensor
