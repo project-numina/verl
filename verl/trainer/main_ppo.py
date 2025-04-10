@@ -21,6 +21,90 @@ import ray
 import hydra
 
 
+
+
+from autoformalizer.data_utils.process_reasoning_text import extract_proof_from_text
+from autoformalizer.clients.lean4_client import Lean4Client, batch_verify_proof
+
+import re
+import os
+import random
+
+client = Lean4Client(
+    url=os.environ.get("LEAN4_API_URL"),
+    api_key=os.environ.get("LEAN4_API_KEY"),
+)
+
+TIMEOUT=60
+LEAN4_PROOF_PARSING_ERRORS = [
+    "Theorem statement couldn't be parsed from statement.",
+    "No proof found in the output."
+]
+
+def random_reward(data_sources, solution_strs, ground_truths, extra_infos):
+
+    rws = [random.random() for _ in solution_strs]
+    rws = [1.0 if x < 0.6 else 0.0 for x in rws]
+    return rws
+
+
+def format_reward(solution_str):
+    pattern = r"<think>(.*?)</think>\n```lean4\n(.*?)\n```"
+    return 1.0 if re.search(pattern, solution_str, re.DOTALL) else 0.0
+
+def proof_rewards(lean4_proofs, timeout = TIMEOUT):
+
+    samples = [
+        {
+            "uuid": str(idx),
+            "proof_id": str(idx),
+            "proof": proof,
+        }
+        for idx, proof in enumerate(lean4_proofs)
+    ]
+
+    results = batch_verify_proof(client, samples, timeout=timeout)
+
+    rewards = []
+    uuid_to_result = {result["uuid"]: result for result in results}
+    for idx, proof in enumerate(lean4_proofs):
+        result = uuid_to_result[str(idx)]
+        if result.get("is_valid_no_sorry", False):
+            rewards.append(1.0)
+        else:
+            rewards.append(0.0)
+
+    return rewards
+
+
+def formal_reasoning_reward(data_sources, solution_strs, ground_truths, extra_infos, proof_weight = 0.9, format_weight = 0.1, return_dict=False):
+
+    normalizer = proof_weight + format_weight
+    proof_weight /= normalizer
+    format_weight /= normalizer
+
+    formal_statements = [extra_info["formal_statement"] for extra_info in extra_infos]
+    lean4_proofs = [extract_proof_from_text(solution_str, formal_statement) for solution_str, formal_statement in zip(solution_strs, formal_statements)]
+    proof_rws = proof_rewards(lean4_proofs)
+    format_rws = [format_reward(solution_str) for solution_str in solution_strs]
+    scores = [proof_weight * proof_rw + format_weight * format_rw for proof_rw, format_rw in zip(proof_rws, format_rws)]
+
+    if not return_dict:
+        return scores
+    
+    rws = []
+    for lean4_proof, score, format_rw, proof_rw in zip(lean4_proofs, scores, format_rws, proof_rws):
+        rws.append({
+            "score": score,
+            "pred": lean4_proof,
+            "acc": proof_rw,
+            #"format_reward": format_rw,
+            #"proof_reward": proof_rw
+        })
+    
+    return rws
+
+
 def get_custom_reward_fn(config):
     import importlib.util, sys
     reward_fn_config = config.get("custom_reward_function") or {}
@@ -171,14 +255,14 @@ class TaskRunner:
         reward_kwargs = dict(config.reward_model.get("reward_kwargs", {}))
         reward_fn = reward_manager_cls(tokenizer=tokenizer,
                                        num_examine=0,
-                                       compute_score=compute_score,
+                                       compute_score=formal_reasoning_reward,
                                        reward_fn_key=config.data.reward_fn_key,
                                        **reward_kwargs)
 
         # Note that we always use function-based RM for validation
         val_reward_fn = reward_manager_cls(tokenizer=tokenizer,
                                            num_examine=1,
-                                           compute_score=compute_score,
+                                           compute_score=formal_reasoning_reward,
                                            reward_fn_key=config.data.reward_fn_key)
         resource_pool_manager = ResourcePoolManager(resource_pool_spec=resource_pool_spec, mapping=mapping)
 
