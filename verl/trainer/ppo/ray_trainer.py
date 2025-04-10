@@ -237,6 +237,11 @@ def _timer(name: str, timing_raw: Dict[str, float]):
     timing_raw[name] = timer.last
 
 
+@ray.remote(num_cpus=1)
+def compute_reward_fn(data: DataProto, reward_fn):
+    reward_fn(data, return_dict=True)
+    
+
 class RayPPOTrainer(object):
     """
     Note that this trainer runs on the driver process on a single CPU/GPU node.
@@ -906,6 +911,14 @@ class RayPPOTrainer(object):
                     # compute global_valid tokens
                     batch.meta_info['global_token_num'] = torch.sum(batch.batch['attention_mask'], dim=-1).tolist()
 
+                    with _timer('reward', timing_raw):
+                        # compute reward model score
+                        if self.use_rm:
+                            reward_tensor = self.rm_wg.compute_rm_score(batch)
+                            batch = batch.union(reward_tensor)
+
+                        future_reward = compute_reward_fn.remote(batch, self.reward_fn)
+
                     # recompute old_log_probs
                     with _timer('old_log_prob', timing_raw):
                         old_log_prob = self.actor_rollout_wg.compute_log_prob(batch)
@@ -924,18 +937,10 @@ class RayPPOTrainer(object):
                             batch = batch.union(values)
 
                     with _timer('adv', timing_raw):
-                        # compute scores. Support both model and function-based.
-                        # We first compute the scores using reward model. Then, we call reward_fn to combine
-                        # the results from reward model and rule-based results.
-                        if self.use_rm:
-                            # we first compute reward model score
-                            reward_tensor = self.rm_wg.compute_rm_score(batch)
-                            batch = batch.union(reward_tensor)
-
                         # we combine with rule-based rm
                         reward_extra_infos_dict: dict[str, list]
                         try:
-                            reward_result = self.reward_fn(batch, return_dict=True)
+                            reward_result = ray.get(future_reward)
                             reward_tensor = reward_result['reward_tensor']
                             reward_extra_infos_dict = reward_result['reward_extra_info']
                         except Exception as e:
@@ -943,6 +948,9 @@ class RayPPOTrainer(object):
                             reward_tensor = self.reward_fn(batch)
                             reward_extra_infos_dict = {}
 
+                        # compute scores. Support both model and function-based.
+                        # We first compute the scores using reward model. Then, we call reward_fn to combine
+                        # the results from reward model and rule-based results.
                         batch.batch['token_level_scores'] = reward_tensor
 
                         if self.config.trainer.log_rollout_generations > 0:
