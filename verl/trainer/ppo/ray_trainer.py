@@ -239,8 +239,8 @@ def _timer(name: str, timing_raw: Dict[str, float]):
 
 @ray.remote(num_cpus=1)
 def compute_reward_fn(data: DataProto, reward_fn):
-    reward_fn(data, return_dict=True)
-    
+    return reward_fn(data, return_dict=True)
+
 
 class RayPPOTrainer(object):
     """
