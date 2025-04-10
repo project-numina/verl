@@ -59,6 +59,12 @@ def main(config):
     run_ppo(config)
 
 
+@ray.remote(num_cpus=1)
+def compute_reward_fn(data, reward_fn):
+    print('hello from reward')
+    return "returned reward"
+
+
 def run_ppo(config) -> None:
     # TODO(linjunrong.ocss884): this ENV is left for resolving SGLang conflict with ray devices
     # isolation, will solve in the future
@@ -182,16 +188,22 @@ class TaskRunner:
                                            reward_fn_key=config.data.reward_fn_key)
         resource_pool_manager = ResourcePoolManager(resource_pool_spec=resource_pool_spec, mapping=mapping)
 
-        trainer = RayPPOTrainer(config=config,
-                                tokenizer=tokenizer,
-                                processor=processor,
-                                role_worker_mapping=role_worker_mapping,
-                                resource_pool_manager=resource_pool_manager,
-                                ray_worker_group_cls=ray_worker_group_cls,
-                                reward_fn=reward_fn,
-                                val_reward_fn=val_reward_fn)
-        trainer.init_workers()
-        trainer.fit()
+        data = []
+
+        future = compute_reward_fn.remote(data, reward_fn)
+        x = ray.get(future)
+        print(x)
+
+        # trainer = RayPPOTrainer(config=config,
+        #                         tokenizer=tokenizer,
+        #                         processor=processor,
+        #                         role_worker_mapping=role_worker_mapping,
+        #                         resource_pool_manager=resource_pool_manager,
+        #                         ray_worker_group_cls=ray_worker_group_cls,
+        #                         reward_fn=reward_fn,
+        #                         val_reward_fn=val_reward_fn)
+        # trainer.init_workers()
+        # trainer.fit()
 
 
 if __name__ == '__main__':
