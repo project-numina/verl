@@ -239,7 +239,17 @@ def _timer(name: str, timing_raw: Dict[str, float]):
 
 @ray.remote(num_cpus=1)
 def compute_reward_fn(data: DataProto, reward_fn):
-    return reward_fn(data, return_dict=True)
+    try:
+        reward_result = reward_fn(data, return_dict=True)
+        reward_tensor = reward_result['reward_tensor']
+        reward_extra_infos_dict = reward_result['reward_extra_info']
+    except Exception as e:
+        print(f'Error in reward_fn: {e}')
+        reward_tensor = reward_fn(data)
+        reward_extra_infos_dict = {}
+
+    return reward_tensor, reward_extra_infos_dict
+
 
 
 class RayPPOTrainer(object):
@@ -939,14 +949,7 @@ class RayPPOTrainer(object):
                     with _timer('adv', timing_raw):
                         # we combine with rule-based rm
                         reward_extra_infos_dict: dict[str, list]
-                        try:
-                            reward_result = ray.get(future_reward)
-                            reward_tensor = reward_result['reward_tensor']
-                            reward_extra_infos_dict = reward_result['reward_extra_info']
-                        except Exception as e:
-                            print(f'Error in reward_fn: {e}')
-                            reward_tensor = self.reward_fn(batch)
-                            reward_extra_infos_dict = {}
+                        reward_result, reward_extra_infos_dict= ray.get(future_reward)
 
                         # compute scores. Support both model and function-based.
                         # We first compute the scores using reward model. Then, we call reward_fn to combine
