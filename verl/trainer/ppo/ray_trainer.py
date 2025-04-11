@@ -949,7 +949,7 @@ class RayPPOTrainer(object):
                     with _timer('adv', timing_raw):
                         # we combine with rule-based rm
                         reward_extra_infos_dict: dict[str, list]
-                        reward_result, reward_extra_infos_dict= ray.get(future_reward)
+                        reward_tensor, reward_extra_infos_dict = ray.get(future_reward)
 
                         # compute scores. Support both model and function-based.
                         # We first compute the scores using reward model. Then, we call reward_fn to combine
