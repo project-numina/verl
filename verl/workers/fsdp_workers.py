@@ -622,6 +622,30 @@ class ActorRolloutRefWorker(Worker):
         if self._is_offload_optimizer:
             offload_fsdp_optimizer(self.actor_optimizer)
 
+    @register(dispatch_mode=Dispatch.ONE_TO_ALL)
+    def get_state_dict(self):
+        """
+        Return the FSDP-wrapped model state dict (for actor or ref).
+        Only supports being called from the actor.
+        """
+        if self._is_actor:
+            return self.actor_module_fsdp.state_dict()
+        elif self._is_ref:
+            return self.ref_module_fsdp.state_dict()
+        else:
+            raise RuntimeError("get_state_dict called on a worker that is neither actor nor ref.")
+
+    @register(dispatch_mode=Dispatch.ONE_TO_ALL)
+    def copy_weights_from(self, state_dict):
+        """
+        Copy the given state_dict into the reference model (ref_module_fsdp).
+        Only supports being called from a reference worker.
+        """
+        if not self._is_ref:
+            raise RuntimeError("copy_weights_from can only be called on a reference worker.")
+        self.ref_module_fsdp.load_state_dict(state_dict)
+
+
 
 class CriticWorker(Worker):
 
