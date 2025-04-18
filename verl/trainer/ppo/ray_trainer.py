@@ -1082,7 +1082,7 @@ class RayPPOTrainer(object):
                         metrics.update(actor_output_metrics)
 
                     # update reference model with actor
-                    if self.use_reference_policy and self.global_steps % 10 == 0:
+                    if self.use_reference_policy and self.global_steps % 2 == 0:
                         with _timer('update_ref', timing_raw):
                             self.ref_policy_wg.load_ref_weights_from_state_dict(self.actor_rollout_wg.export_actor_weights())
 
