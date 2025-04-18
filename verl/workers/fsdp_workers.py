@@ -624,10 +624,8 @@ class ActorRolloutRefWorker(Worker):
 
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
     def export_actor_weights(self):
-        """
-        Returns the actor's state_dict for external use.
-        This will return the full, CPU-based state_dict to avoid GPU memory pressure.
-        """
+        assert self._is_actor
+
         from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, ShardedStateDictConfig
 
         if self._is_offload_param:
@@ -649,6 +647,8 @@ class ActorRolloutRefWorker(Worker):
         """
         Loads a given state_dict into the reference model.
         """
+        assert self._is_ref
+
         from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, ShardedStateDictConfig
 
         if self._is_offload_param:
