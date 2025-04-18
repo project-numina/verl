@@ -1083,8 +1083,8 @@ class RayPPOTrainer(object):
 
                     if self.use_reference_policy and self.global_steps % 10 == 0:
                         print(f"[INFO] Updating reference model at step {self.global_steps}")
-                        actor_state_dict = ray.get(self.actor_rollout_wg.get_state_dict.remote())
-                        ray.get(self.ref_policy_wg.copy_weights_from.remote(actor_state_dict))
+                        actor_state_dict = self.actor_rollout_wg.get_state_dict()
+                        self.ref_policy_wg.copy_weights_from(actor_state_dict)
 
                     # validate
                     if self.val_reward_fn is not None and self.config.trainer.test_freq > 0 and \
