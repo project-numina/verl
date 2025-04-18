@@ -628,27 +628,28 @@ class ActorRolloutRefWorker(Worker):
         Returns the actor's state_dict for external use.
         This will return the full, CPU-based state_dict to avoid GPU memory pressure.
         """
-        if self._is_offload_param:
-            load_fsdp_model_to_gpu(self.actor_module_fsdp)
+        from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, ShardedStateDictConfig
 
-        state_dict = self.actor_module_fsdp.state_dict()
+        # Step 1: Force full state dict mode
+        state_dict_cfg = ShardedStateDictConfig(offload_to_cpu=True)
 
-        # Optionally move tensors to CPU to reduce memory load
-        for k, v in state_dict.items():
-            state_dict[k] = v.cpu()
+        with FSDP.state_dict_type(self.model, StateDictType.SHARDED_STATE_DICT, state_dict_cfg):
+            model_state_dict = self.actor_module_fsdp.state_dict()
 
-        if self._is_offload_param:
-            offload_fsdp_model_to_cpu(self.actor_module_fsdp)
-
-        return state_dict
+        return self.rank, model_state_dict
     
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
-    def load_ref_weights_from_state_dict(self, state_dict: dict):
+    def load_ref_weights_from_state_dict(self, state_dicts):
         """
         Loads a given state_dict into the reference model.
         """
-        self.ref_module_fsdp.load_state_dict(state_dict)
+        from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, ShardedStateDictConfig
 
+        state_dict_cfg = ShardedStateDictConfig(offload_to_cpu=True)
+        for rank, state_dict in state_dicts.items():
+            if rank == self.rank:
+                with FSDP.state_dict_type(self.ref_module_fsdp, StateDictType.SHARDED_STATE_DICT, state_dict_cfg):
+                    self.ref_module_fsdp.load_state_dict(state_dict)
 
 
 class CriticWorker(Worker):

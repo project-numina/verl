@@ -962,6 +962,8 @@ class RayPPOTrainer(object):
                 is_last_step = self.global_steps >= self.total_training_steps
 
                 with _timer('step', timing_raw):
+                    self.ref_policy_wg.load_ref_weights_from_state_dict(self.actor_rollout_wg.export_actor_weights())
+
                     # generate a batch
                     with _timer('gen', timing_raw):
                         gen_batch_output = self.actor_rollout_wg.generate_sequences(gen_batch)
