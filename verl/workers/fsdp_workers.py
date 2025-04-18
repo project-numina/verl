@@ -623,19 +623,31 @@ class ActorRolloutRefWorker(Worker):
             offload_fsdp_optimizer(self.actor_optimizer)
 
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
-    def set_weights(self, worker):
-        """ Load weights from another worker """
+    def export_actor_weights(self):
+        """
+        Returns the actor's state_dict for external use.
+        This will return the full, CPU-based state_dict to avoid GPU memory pressure.
+        """
+        if self._is_offload_param:
+            load_fsdp_model_to_gpu(self.actor_module_fsdp)
 
-        assert self._is_ref
-        assert worker._is_actor
+        state_dict = self.actor_module_fsdp.state_dict()
 
-        alpha = 1.0
+        # Optionally move tensors to CPU to reduce memory load
+        for k, v in state_dict.items():
+            state_dict[k] = v.cpu()
 
-        for target_param, copy_param in zip(self.ref_policy.actor_module.parameters(), worker.actor_module.parameters()):
-            device_param = copy_param.data.to(target_param.device)
-            target_param.data.mul_(1.0 - alpha).add_(device_param, alpha=alpha)
+        if self._is_offload_param:
+            offload_fsdp_model_to_cpu(self.actor_module_fsdp)
 
-        torch.distributed.barrier()
+        return state_dict
+    
+    @register(dispatch_mode=Dispatch.ONE_TO_ALL)
+    def load_ref_weights_from_state_dict(self, state_dict: dict):
+        """
+        Loads a given state_dict into the reference model.
+        """
+        self.ref_module_fsdp.load_state_dict(state_dict)
 
 
 
