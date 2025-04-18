@@ -646,7 +646,7 @@ class ActorRolloutRefWorker(Worker):
         from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, ShardedStateDictConfig
 
         state_dict_cfg = ShardedStateDictConfig(offload_to_cpu=True)
-        for rank, state_dict in state_dicts.items():
+        for rank, state_dict in state_dicts:
             if rank == self.rank:
                 with FSDP.state_dict_type(self.ref_module_fsdp, StateDictType.SHARDED_STATE_DICT, state_dict_cfg):
                     self.ref_module_fsdp.load_state_dict(state_dict)
