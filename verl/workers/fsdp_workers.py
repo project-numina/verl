@@ -630,11 +630,17 @@ class ActorRolloutRefWorker(Worker):
         """
         from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, ShardedStateDictConfig
 
+        if self._is_offload_param:
+            load_fsdp_model_to_gpu(self.actor_module_fsdp)
+
         # Step 1: Force full state dict mode
         state_dict_cfg = ShardedStateDictConfig(offload_to_cpu=True)
 
         with FSDP.state_dict_type(self.actor_module_fsdp, StateDictType.SHARDED_STATE_DICT, state_dict_cfg):
             model_state_dict = self.actor_module_fsdp.state_dict()
+
+        if self._is_offload_param:
+            offload_fsdp_model_to_cpu(self.actor_module_fsdp)
 
         return self.rank, model_state_dict
     
@@ -645,11 +651,17 @@ class ActorRolloutRefWorker(Worker):
         """
         from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, ShardedStateDictConfig
 
+        if self._is_offload_param:
+            load_fsdp_model_to_gpu(self.ref_module_fsdp)
+
         state_dict_cfg = ShardedStateDictConfig(offload_to_cpu=True)
         for rank, state_dict in state_dicts:
             if rank == self.rank:
                 with FSDP.state_dict_type(self.ref_module_fsdp, StateDictType.SHARDED_STATE_DICT, state_dict_cfg):
                     self.ref_module_fsdp.load_state_dict(state_dict)
+
+        if self._is_offload_param:
+            offload_fsdp_model_to_cpu(self.ref_module_fsdp)
 
 
 class CriticWorker(Worker):
