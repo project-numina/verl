@@ -623,27 +623,19 @@ class ActorRolloutRefWorker(Worker):
             offload_fsdp_optimizer(self.actor_optimizer)
 
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
-    def get_state_dict(self):
-        """
-        Return the FSDP-wrapped model state dict (for actor or ref).
-        Only supports being called from the actor.
-        """
-        if self._is_actor:
-            return self.actor_module_fsdp.state_dict()
-        elif self._is_ref:
-            return self.ref_module_fsdp.state_dict()
-        else:
-            raise RuntimeError("get_state_dict called on a worker that is neither actor nor ref.")
+    def set_weights(self, worker):
+        """ Load weights from another worker """
 
-    @register(dispatch_mode=Dispatch.ONE_TO_ALL)
-    def copy_weights_from(self, state_dict):
-        """
-        Copy the given state_dict into the reference model (ref_module_fsdp).
-        Only supports being called from a reference worker.
-        """
-        if not self._is_ref:
-            raise RuntimeError("copy_weights_from can only be called on a reference worker.")
-        self.ref_module_fsdp.load_state_dict(state_dict)
+        assert self._is_ref
+        assert worker._is_actor
+
+        alpha = 1.0
+
+        for target_param, copy_param in zip(self.ref_policy.actor_module.parameters(), worker.actor_module.parameters()):
+            device_param = copy_param.data.to(target_param.device)
+            target_param.data.mul_(1.0 - alpha).add_(device_param, alpha=alpha)
+
+        torch.distributed.barrier()
 
 
 

@@ -1081,10 +1081,10 @@ class RayPPOTrainer(object):
                         actor_output_metrics = reduce_metrics(actor_output.meta_info['metrics'])
                         metrics.update(actor_output_metrics)
 
+                    # update reference model with actor
                     if self.use_reference_policy and self.global_steps % 10 == 0:
-                        print(f"[INFO] Updating reference model at step {self.global_steps}")
-                        actor_state_dict = self.actor_rollout_wg.get_state_dict()
-                        self.ref_policy_wg.copy_weights_from(actor_state_dict)
+                        with _timer('update_ref', timing_raw):
+                            self.ref_policy_wg.set_weights(self.actor_rollout_wg)
 
                     # validate
                     if self.val_reward_fn is not None and self.config.trainer.test_freq > 0 and \
