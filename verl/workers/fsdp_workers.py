@@ -633,7 +633,7 @@ class ActorRolloutRefWorker(Worker):
         # Step 1: Force full state dict mode
         state_dict_cfg = ShardedStateDictConfig(offload_to_cpu=True)
 
-        with FSDP.state_dict_type(self.model, StateDictType.SHARDED_STATE_DICT, state_dict_cfg):
+        with FSDP.state_dict_type(self.actor_module_fsdp, StateDictType.SHARDED_STATE_DICT, state_dict_cfg):
             model_state_dict = self.actor_module_fsdp.state_dict()
 
         return self.rank, model_state_dict
