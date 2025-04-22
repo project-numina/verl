@@ -661,10 +661,9 @@ class ActorRolloutRefWorker(Worker):
                 with FSDP.state_dict_type(self.ref_module_fsdp, StateDictType.SHARDED_STATE_DICT, state_dict_cfg):
                     ref_state_dict = self.ref_module_fsdp.state_dict()
 
-                # 2. EMA update: blend each parameter
+                # 2. blend each parameter
                 for key in ref_state_dict:
-                    if key not in actor_state_dict:
-                        continue
+                    assert key in actor_state_dict
                     ref_param = ref_state_dict[key]
                     actor_param = actor_state_dict[key].to(ref_param.device)
                     ref_state_dict[key] = (1.0 - alpha) * ref_param + alpha * actor_param
