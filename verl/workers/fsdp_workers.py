@@ -449,7 +449,7 @@ class ActorRolloutRefWorker(Worker):
                 optimizer=None,
                 lr_scheduler=None,
                 processing_class=self.processor if self.processor is not None else self.tokenizer,
-                checkpoint_contents=self.config.actor.checkpoint.contents)
+                checkpoint_contents=self.config.actor.checkpoint.contents) # use the same checkpoint contents as actor
 
     @register(dispatch_mode=Dispatch.DP_COMPUTE_PROTO)
     def update_actor(self, data: DataProto):
