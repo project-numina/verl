@@ -444,7 +444,6 @@ class ActorRolloutRefWorker(Worker):
                 checkpoint_contents=self.config.actor.checkpoint.contents)
             
         if self._is_ref:
-            self.flops_counter = FlopsCounter(self.actor_model_config)
             self.checkpoint_manager = FSDPCheckpointManager(
                 model=self.ref_module_fsdp,
                 optimizer=None,
