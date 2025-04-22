@@ -442,6 +442,15 @@ class ActorRolloutRefWorker(Worker):
                 lr_scheduler=self.actor_lr_scheduler,
                 processing_class=self.processor if self.processor is not None else self.tokenizer,
                 checkpoint_contents=self.config.actor.checkpoint.contents)
+            
+        if self._is_ref:
+            self.flops_counter = FlopsCounter(self.actor_model_config)
+            self.checkpoint_manager = FSDPCheckpointManager(
+                model=self.ref_module_fsdp,
+                optimizer=None,
+                lr_scheduler=None,
+                processing_class=self.processor if self.processor is not None else self.tokenizer,
+                checkpoint_contents=self.config.ref.checkpoint.contents)
 
     @register(dispatch_mode=Dispatch.DP_COMPUTE_PROTO)
     def update_actor(self, data: DataProto):
@@ -592,11 +601,14 @@ class ActorRolloutRefWorker(Worker):
 
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
     def save_checkpoint(self, local_path, hdfs_path=None, global_step=0, max_ckpt_to_keep=None):
-        # only support save and load ckpt for actor
-        assert self._is_actor
+        assert self._is_actor or self._is_ref
         import torch
         if self._is_offload_param:
-            load_fsdp_model_to_gpu(self.actor_module_fsdp)
+            if self._is_actor:
+                load_fsdp_model_to_gpu(self.actor_module_fsdp)
+            elif self._is_ref:
+                load_fsdp_model_to_gpu(self.ref_module_fsdp)
+            
 
         self.checkpoint_manager.save_checkpoint(local_path=local_path,
                                                 hdfs_path=hdfs_path,
@@ -605,21 +617,31 @@ class ActorRolloutRefWorker(Worker):
 
         torch.distributed.barrier()
         if self._is_offload_param:
-            offload_fsdp_model_to_cpu(self.actor_module_fsdp)
+            if self._is_actor:
+                offload_fsdp_model_to_cpu(self.actor_module_fsdp)
+            elif self._is_ref:
+                offload_fsdp_model_to_cpu(self.ref_module_fsdp)
 
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
     def load_checkpoint(self, local_path, hdfs_path=None, del_local_after_load=False):
+        assert self._is_actor or self._is_ref
         if self._is_offload_param:
-            load_fsdp_model_to_gpu(self.actor_module_fsdp)
+            if self._is_actor:
+                load_fsdp_model_to_gpu(self.actor_module_fsdp)
+            elif self._is_ref:
+                load_fsdp_model_to_gpu(self.ref_module_fsdp)
 
         self.checkpoint_manager.load_checkpoint(local_path=local_path,
                                                 hdfs_path=hdfs_path,
                                                 del_local_after_load=del_local_after_load)
 
         if self._is_offload_param:
-            offload_fsdp_model_to_cpu(self.actor_module_fsdp)
+            if self._is_actor:
+                offload_fsdp_model_to_cpu(self.actor_module_fsdp)
+            elif self._is_ref:
+                offload_fsdp_model_to_cpu(self.ref_module_fsdp)
 
-        if self._is_offload_optimizer:
+        if self._is_actor and self._is_offload_optimizer:
             offload_fsdp_optimizer(self.actor_optimizer)
 
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)

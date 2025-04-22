@@ -809,11 +809,22 @@ class RayPPOTrainer(object):
                                                          None) if not remove_previous_ckpt_in_save else 1
         max_critic_ckpt_to_keep = self.config.trainer.get('max_critic_ckpt_to_keep',
                                                           None) if not remove_previous_ckpt_in_save else 1
+        max_ref_ckpt_to_keep = self.config.trainer.get('max_ref_ckpt_to_keep',
+                                                        None) if not remove_previous_ckpt_in_save else 1
 
         self.actor_rollout_wg.save_checkpoint(actor_local_path,
                                               actor_remote_path,
                                               self.global_steps,
                                               max_ckpt_to_keep=max_actor_ckpt_to_keep)
+        
+        if self.config.actor_rollout_ref.ref.sync_actor:
+            ref_local_path = os.path.join(local_global_step_folder, 'ref')
+            ref_remote_path = None if self.config.trainer.default_hdfs_dir is None else os.path.join(
+                self.config.trainer.default_hdfs_dir, f'global_step_{self.global_steps}', 'ref')
+            self.ref_policy_wg.save_checkpoint(ref_local_path,
+                                               ref_remote_path,
+                                               self.global_steps,
+                                               max_ckpt_to_keep=max_ref_ckpt_to_keep)
 
         if self.use_critic:
             critic_local_path = os.path.join(local_global_step_folder, 'critic')
@@ -871,9 +882,16 @@ class RayPPOTrainer(object):
 
         actor_path = os.path.join(global_step_folder, 'actor')
         critic_path = os.path.join(global_step_folder, 'critic')
+        ref_path = os.path.join(global_step_folder, 'ref')
         # load actor
         self.actor_rollout_wg.load_checkpoint(actor_path,
                                               del_local_after_load=self.config.trainer.del_local_ckpt_after_load)
+        
+        # load reference policy
+        if self.config.actor_rollout_ref.ref.sync_actor:
+            self.ref_policy_wg.load_checkpoint(ref_path,
+                                               del_local_after_load=self.config.trainer.del_local_ckpt_after_load)
+
         # load critic
         if self.use_critic:
             self.critic_wg.load_checkpoint(critic_path,
