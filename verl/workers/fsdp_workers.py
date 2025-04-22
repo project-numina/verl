@@ -643,7 +643,7 @@ class ActorRolloutRefWorker(Worker):
         return self.rank, model_state_dict
     
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
-    def load_ref_weights_from_state_dict(self, state_dicts):
+    def sync_with_actor(self, actor_state_dicts, alpha=1.0):
         """
         Loads a given state_dict into the reference model.
         """
@@ -655,10 +655,23 @@ class ActorRolloutRefWorker(Worker):
             load_fsdp_model_to_gpu(self.ref_module_fsdp)
 
         state_dict_cfg = ShardedStateDictConfig(offload_to_cpu=True)
-        for rank, state_dict in state_dicts:
+        for rank, actor_state_dict in actor_state_dicts:
             if rank == self.rank:
+                # 1. Load current ref model state dict
                 with FSDP.state_dict_type(self.ref_module_fsdp, StateDictType.SHARDED_STATE_DICT, state_dict_cfg):
-                    self.ref_module_fsdp.load_state_dict(state_dict)
+                    ref_state_dict = self.ref_module_fsdp.state_dict()
+
+                # 2. EMA update: blend each parameter
+                for key in ref_state_dict:
+                    if key not in actor_state_dict:
+                        continue
+                    ref_param = ref_state_dict[key]
+                    actor_param = actor_state_dict[key].to(ref_param.device)
+                    ref_state_dict[key] = (1.0 - alpha) * ref_param + alpha * actor_param
+
+                # 3. Load the blended state dict into the reference model
+                with FSDP.state_dict_type(self.ref_module_fsdp, StateDictType.SHARDED_STATE_DICT, state_dict_cfg):
+                    self.ref_module_fsdp.load_state_dict(ref_state_dict)
 
         if self._is_offload_param:
             offload_fsdp_model_to_cpu(self.ref_module_fsdp)

@@ -1084,7 +1084,7 @@ class RayPPOTrainer(object):
                     # update reference model with actor
                     if self.use_reference_policy and self.config.ref.sync_actor and self.global_steps % self.config.ref.sync_steps == 0:
                         with _timer('update_ref', timing_raw):
-                            self.ref_policy_wg.load_ref_weights_from_state_dict(self.actor_rollout_wg.export_actor_weights())
+                            self.ref_policy_wg.sync_with_actor(self.actor_rollout_wg.export_actor_weights(), self.config.ref.sync_actor_alpha)
 
                     # validate
                     if self.val_reward_fn is not None and self.config.trainer.test_freq > 0 and \
