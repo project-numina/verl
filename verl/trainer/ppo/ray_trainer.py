@@ -261,6 +261,7 @@ class RayPPOTrainer(object):
         self.config = config
         self.reward_fn = reward_fn
         self.val_reward_fn = val_reward_fn
+        self.tracker = None
 
         self.hybrid_engine = config.actor_rollout_ref.hybrid_engine
         assert self.hybrid_engine, 'Currently, only support hybrid engine'
@@ -829,6 +830,8 @@ class RayPPOTrainer(object):
 
         self.global_steps = 0
 
+        self.tracker = logger
+
         # load checkpoint before doing anything
         self._load_checkpoint()
 
@@ -935,12 +938,12 @@ class RayPPOTrainer(object):
                         # we combine with rule-based rm
                         reward_extra_infos_dict: dict[str, list]
                         try:
-                            reward_result = self.reward_fn(batch, return_dict=True)
+                            reward_result = self.reward_fn(batch, return_dict=True, tracker=self.tracker, step=self.global_steps)
                             reward_tensor = reward_result['reward_tensor']
                             reward_extra_infos_dict = reward_result['reward_extra_info']
                         except Exception as e:
                             print(f'Error in reward_fn: {e}')
-                            reward_tensor = self.reward_fn(batch)
+                            reward_tensor = self.reward_fn(batch, tracker=self.tracker, step=self.global_steps)
                             reward_extra_infos_dict = {}
 
                         batch.batch['token_level_scores'] = reward_tensor
