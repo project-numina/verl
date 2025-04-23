@@ -1234,6 +1234,19 @@ class RayPPOTrainer:
                             reward_tensor, reward_extra_infos_dict = ray.get(future_reward)
                         batch.batch["token_level_scores"] = reward_tensor
 
+                        if self.config.trainer.log_rollout_generations > 0:
+                            # Extract inputs, outputs and scores from the batch
+                            input_ids = batch.batch['input_ids']
+                            input_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in input_ids]
+                            output_ids = batch.batch['responses']
+                            output_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids]
+                            scores = reward_tensor.sum(-1).cpu().tolist()
+                            self._log_all_generations(inputs=input_texts,
+                                                      outputs=output_texts,
+                                                      scores=scores,
+                                                      epoch=epoch)
+
+                        print(f'{list(reward_extra_infos_dict.keys())=}')
                         if reward_extra_infos_dict:
                             batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
 
