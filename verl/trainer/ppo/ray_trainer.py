@@ -39,23 +39,22 @@ from tqdm import tqdm
 from verl import DataProto
 from verl.protocol import pad_dataproto_to_divisor, unpad_dataproto
 from verl.single_controller.base import Worker
-from verl.single_controller.ray import RayClassWithInitArgs, RayResourcePool, RayWorkerGroup
+from verl.single_controller.ray import (RayClassWithInitArgs, RayResourcePool,
+                                        RayWorkerGroup)
 from verl.single_controller.ray.base import create_colocated_worker_cls
 from verl.trainer.ppo import core_algos
 from verl.trainer.ppo.core_algos import AdvantageEstimator, agg_loss
-from verl.trainer.ppo.metric_utils import (
-    compute_data_metrics,
-    compute_throughout_metrics,
-    compute_timing_metrics,
-    process_validation_metrics,
-)
+from verl.trainer.ppo.metric_utils import (compute_data_metrics,
+                                           compute_throughout_metrics,
+                                           compute_timing_metrics,
+                                           process_validation_metrics)
 from verl.trainer.ppo.reward import compute_reward, compute_reward_async
-from verl.utils.checkpoint.checkpoint_manager import find_latest_ckpt_path, should_save_ckpt_esi
+from verl.utils.checkpoint.checkpoint_manager import (find_latest_ckpt_path,
+                                                      should_save_ckpt_esi)
 from verl.utils.debug import marked_timer
-from verl.utils.metric import (
-    reduce_metrics,
-)
-from verl.utils.seqlen_balancing import get_seqlen_balanced_partitions, log_seqlen_unbalance
+from verl.utils.metric import reduce_metrics
+from verl.utils.seqlen_balancing import (get_seqlen_balanced_partitions,
+                                         log_seqlen_unbalance)
 from verl.utils.torch_functional import masked_mean
 from verl.utils.tracking import ValidationGenerationsLogger
 
@@ -572,7 +571,8 @@ class RayPPOTrainer:
         if train_sampler is None:
             train_sampler = create_rl_sampler(self.config.data, self.train_dataset)
         if collate_fn is None:
-            from verl.utils.dataset.rl_dataset import collate_fn as default_collate_fn
+            from verl.utils.dataset.rl_dataset import \
+                collate_fn as default_collate_fn
 
             collate_fn = default_collate_fn
 
@@ -1225,11 +1225,6 @@ class RayPPOTrainer:
                     with marked_timer("adv", timing_raw, color="brown"):
                         # we combine with rule-based rm
                         reward_extra_infos_dict: dict[str, list]
-<<<<<<< HEAD
-                        if self.config.reward_model.launch_reward_fn_async:
-                            reward_tensor, reward_extra_infos_dict = ray.get(future_reward)
-                        batch.batch["token_level_scores"] = reward_tensor
-=======
                         try:
                             reward_result = self.reward_fn(batch, return_dict=True, tracker=self.tracker, step=self.global_steps)
                             reward_tensor = reward_result['reward_tensor']
@@ -1238,8 +1233,22 @@ class RayPPOTrainer:
                             print(f'Error in reward_fn: {e}')
                             reward_tensor = self.reward_fn(batch, tracker=self.tracker, step=self.global_steps)
                             reward_extra_infos_dict = {}
->>>>>>> a0cee94 (negative positive token length to wandb)
 
+                        batch.batch['token_level_scores'] = reward_tensor
+
+                        if self.config.trainer.log_rollout_generations > 0:
+                            # Extract inputs, outputs and scores from the batch
+                            input_ids = batch.batch['input_ids']
+                            input_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in input_ids]
+                            output_ids = batch.batch['responses']
+                            output_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids]
+                            scores = reward_tensor.sum(-1).cpu().tolist()
+                            self._log_all_generations(inputs=input_texts,
+                                                      outputs=output_texts,
+                                                      scores=scores,
+                                                      epoch=epoch)
+
+                        print(f'{list(reward_extra_infos_dict.keys())=}')
                         if reward_extra_infos_dict:
                             batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
 
