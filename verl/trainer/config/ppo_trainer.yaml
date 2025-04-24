@@ -986,17 +986,11 @@ trainer:
 
   # Save frequency (by iteration) for model checkpoints
   save_freq: -1
-
-  # ESI redundant time (in seconds) for model checkpointsAdd commentMore actions
-  esi_redundant_time: 0
-
-  # Resume mode: "auto", "disable", or "resume_path"
-  # "auto": resume from last checkpoint if available
-  # "disable": start from scratch
-  # "resume_path": resume from a user-defined path
-  resume_mode: auto
-
-  # Path to resume training from (only used when resume_mode is "resume_path")
+  track_token_lengths: true
+  positive_reward_threshold: 0.5
+  token_length_tag_prefix: "test-1.0"
+  # auto: find the last ckpt to resume. If can't find, start from scratch
+  resume_mode: auto # or disable or resume_path if resume_from_path is set
   resume_from_path: null
 
   # Whether to run validation before training begins
