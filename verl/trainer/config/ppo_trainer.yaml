@@ -1000,6 +1000,9 @@ trainer:
 
   # Path to resume training from (only used when resume_mode is "resume_path")
   resume_from_path: null
+  track_token_lengths: true
+  positive_reward_threshold: 0.5
+  token_length_tag_prefix: "test-1.0"
 
   # Whether to run validation before training begins
   val_before_train: True
