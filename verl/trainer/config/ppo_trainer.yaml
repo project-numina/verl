@@ -740,7 +740,6 @@ critic:
 
 # configs for the reward model
 reward_model:
-
   # Whether to enable reward model. If False, we compute the reward only with the user-defined reward functions.
   # In GSM8K and Math examples, we disable reward model.
   # For RLHF alignment example using full_hh_rlhf, we utilize reward model to assess the responses.
@@ -824,6 +823,12 @@ reward_model:
 
   # Whether to launch custom reward function asynchronously during log_prob
   launch_reward_fn_async: False
+
+  length_penalty:   
+    enabled: False  # Set to True to enable length penalty
+    alpha: 0.0      # Alpha parameter: positive favors longer sequences, negative favors shorter
+    min_length: 0   # Minimum sequence length before applying penalty
+    max_length: null  # Maximum sequence length (null means no maximum)
 
   # Cloud/local sandbox fusion configuration for custom reward logic
   sandbox_fusion:
