@@ -849,6 +849,16 @@ reward_model:
     # The ranks that will be profiled. null or [0,1,...]
     ranks: null
 
+    url: null # faas url to run code in cloud sandbox
+
+    max_concurrent: 64 # max concurrent requests to sandbox
+  
+  length_penalty:   
+    enabled: False  # Set to True to enable length penalty
+    alpha: 0.0      # Alpha parameter: positive favors longer sequences, negative favors shorter
+    min_length: 0   # Minimum sequence length before applying penalty
+    max_length: null  # Maximum sequence length (null means no maximum)
+
 # custom reward function definition
 custom_reward_function:
 
