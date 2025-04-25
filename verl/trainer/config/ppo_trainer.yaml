@@ -738,6 +738,31 @@ critic:
 
 # configs for the reward model
 reward_model:
+  enable: False
+  strategy: fsdp
+  model:
+    input_tokenizer: ${actor_rollout_ref.model.path}  # set this to null if the chat template is identical
+    path: ~/models/FsfairX-LLaMA3-RM-v0.1
+    external_lib: ${actor_rollout_ref.model.external_lib}
+    use_remove_padding: False
+    fsdp_config:
+      wrap_policy:
+        min_num_params: 0
+      param_offload: False
+      fsdp_size: -1
+  micro_batch_size: null # will be deprecated, use micro_batch_size_per_gpu
+  micro_batch_size_per_gpu: null # set a number
+  max_length: null
+  ulysses_sequence_parallel_size: 1 # sp size
+  use_dynamic_bsz: ${critic.use_dynamic_bsz}
+  forward_max_token_len_per_gpu: ${critic.forward_max_token_len_per_gpu}
+  reward_manager: naive
+  launch_reward_fn_async: False # custom reward function executed async on CPU, during log_prob
+  length_penalty:   
+    enabled: False  # Set to True to enable length penalty
+    alpha: 0.0      # Alpha parameter: positive favors longer sequences, negative favors shorter
+    min_length: 0   # Minimum sequence length before applying penalty
+    max_length: null  # Maximum sequence length (null means no maximum)
 
   # Whether to enable reward model. If False, we compute the reward only with the user-defined reward functions.
   # In GSM8K and Math examples, we disable reward model.
