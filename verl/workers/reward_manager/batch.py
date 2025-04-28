@@ -38,6 +38,8 @@ class BatchRewardManager:
         self.num_examine = num_examine
         self.compute_score = compute_score
         self.reward_fn_key = reward_fn_key
+        self.length_penalty_config = reward_kwargs.pop("length_penalty_config", {})
+        self.use_length_penalty = self.length_penalty_config.get("enabled", False)
         self.reward_kwargs = reward_kwargs
 
     def verify(self, data):
