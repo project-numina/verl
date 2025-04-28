@@ -1009,9 +1009,6 @@ trainer:
   resume_mode: auto
 
   # Path to resume training from (only used when resume_mode is "resume_path")
-  track_token_lengths: true
-  positive_reward_threshold: 0.5
-  token_length_tag_prefix: "token_length"
   # auto: find the last ckpt to resume. If can't find, start from scratch
   resume_mode: auto # or disable or resume_path if resume_from_path is set
   resume_from_path: null
@@ -1048,6 +1045,12 @@ trainer:
 
   # Device to run training on (e.g., "cuda", "cpu")
   device: cuda
+
+  track_token_lengths: true
+
+  positive_reward_threshold: 0.5
+  
+  token_length_tag_prefix: "token_length"
 
 # configs related to ray initialization
 ray_init:
