@@ -4,6 +4,8 @@ import psutil
 import torch
 from typing import Dict, Any
 import time
+import os
+import socket
 
 class RayMetricsReporter:
     def __init__(self, wandb_project: str, wandb_run_name: str = None):
@@ -14,7 +16,31 @@ class RayMetricsReporter:
         
         # Initialize wandb if not already initialized
         if not wandb.run:
-            wandb.init(project=wandb_project, name=wandb_run_name)
+            # Set wandb to offline mode if WANDB_MODE is not set
+            if "WANDB_MODE" not in os.environ:
+                os.environ["WANDB_MODE"] = "offline"
+            
+            # Get node name for unique run identification
+            node_name = socket.gethostname()
+            
+            # Initialize wandb with offline mode and unique run name per node
+            wandb.init(
+                project=wandb_project,
+                name=f"{wandb_run_name}_{node_name}" if wandb_run_name else f"ray_metrics_{node_name}",
+                mode="offline" if os.environ.get("WANDB_MODE") == "offline" else "online",
+                config={
+                    "node_name": node_name,
+                    "ray_node_id": ray.get_runtime_context().node_id.hex(),
+                    "ray_job_id": ray.get_runtime_context().job_id.hex(),
+                }
+            )
+            
+            # Ensure .wandb file is created
+            if os.environ.get("WANDB_MODE") == "offline":
+                wandb.run.temp.dir.flush()
+                wandb.run.temp.dir.close()
+                # Force creation of .wandb file
+                wandb.run._init_run()
     
     def collect_node_metrics(self) -> Dict[str, Any]:
         """Collect metrics for the current node."""
@@ -78,4 +104,11 @@ class RayMetricsReporter:
         metrics["timestamp"] = time.time() - self.start_time
         
         # Log to wandb
-        wandb.log(metrics) 
+        wandb.log(metrics)
+        
+        # Force sync if in offline mode
+        if os.environ.get("WANDB_MODE") == "offline":
+            wandb.run.temp.dir.flush()
+            wandb.run.temp.dir.close()
+            # Ensure .wandb file is updated
+            wandb.run._init_run() 
