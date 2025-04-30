@@ -37,10 +37,17 @@ class RayMetricsReporter:
             
             # Ensure .wandb file is created
             if os.environ.get("WANDB_MODE") == "offline":
-                wandb.run.temp.dir.flush()
-                wandb.run.temp.dir.close()
-                # Force creation of .wandb file
-                wandb.run._init_run()
+                wandb.finish()
+                wandb.init(
+                    project=wandb_project,
+                    name=f"{wandb_run_name}_{node_name}" if wandb_run_name else f"ray_metrics_{node_name}",
+                    mode="offline",
+                    config={
+                        "node_name": node_name,
+                        "ray_node_id": ray.get_runtime_context().node_id.hex(),
+                        "ray_job_id": ray.get_runtime_context().job_id.hex(),
+                    }
+                )
     
     def collect_node_metrics(self) -> Dict[str, Any]:
         """Collect metrics for the current node."""
@@ -108,7 +115,16 @@ class RayMetricsReporter:
         
         # Force sync if in offline mode
         if os.environ.get("WANDB_MODE") == "offline":
-            wandb.run.temp.dir.flush()
-            wandb.run.temp.dir.close()
-            # Ensure .wandb file is updated
-            wandb.run._init_run() 
+            wandb.finish()
+            # Reinitialize wandb to ensure .wandb file is updated
+            node_name = socket.gethostname()
+            wandb.init(
+                project=self.wandb_project,
+                name=f"{self.wandb_run_name}_{node_name}" if self.wandb_run_name else f"ray_metrics_{node_name}",
+                mode="offline",
+                config={
+                    "node_name": node_name,
+                    "ray_node_id": ray.get_runtime_context().node_id.hex(),
+                    "ray_job_id": ray.get_runtime_context().job_id.hex(),
+                }
+            ) 
