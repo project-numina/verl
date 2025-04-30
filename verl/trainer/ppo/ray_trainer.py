@@ -57,6 +57,7 @@ from verl.utils.seqlen_balancing import get_seqlen_balanced_partitions, log_seql
 from verl.utils.torch_functional import masked_mean
 from verl.utils.tracking import ValidationGenerationsLogger
 from verl.workers.rollout.async_server import AsyncLLMServerManager
+from verl.utils.ray_metrics import RayMetricsReporter
 
 WorkerType = Type[Worker]
 
@@ -307,6 +308,12 @@ class RayPPOTrainer:
 
         self._validate_config()
         self._create_dataloader()
+
+        # Initialize metrics reporter
+        self.metrics_reporter = RayMetricsReporter(
+            wandb_project=config.wandb.project if hasattr(config, 'wandb') else 'verl',
+            wandb_run_name=config.wandb.run_name if hasattr(config, 'wandb') else None
+        )
 
     def _validate_config(self):
         config = self.config
@@ -1057,3 +1064,7 @@ class RayPPOTrainer:
 
                 progress_bar.update(1)
                 self.global_steps += 1
+
+                # Log metrics periodically
+                if self.global_steps % self.config.trainer.logging_steps == 0:
+                    self.metrics_reporter.log_metrics()
