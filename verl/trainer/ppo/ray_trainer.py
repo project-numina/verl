@@ -1053,6 +1053,7 @@ class RayPPOTrainer:
                 # TODO: implement actual tflpo and theoretical tflpo
                 n_gpus = self.resource_pool_manager.get_n_gpus()
                 metrics.update(compute_throughout_metrics(batch=batch, timing_raw=timing_raw, n_gpus=n_gpus))
+                self.metrics_reporter.log_metrics()
 
                 # TODO: make a canonical logger that supports various backend
                 logger.log(data=metrics, step=self.global_steps)
@@ -1060,11 +1061,12 @@ class RayPPOTrainer:
                 if is_last_step:
                     pprint(f"Final validation metrics: {last_val_metrics}")
                     progress_bar.close()
+                    self.metrics_reporter.finish()
                     return
 
                 progress_bar.update(1)
                 self.global_steps += 1
+        
+        self.metrics_reporter.finish()
 
-                # Log metrics periodically
-                if self.global_steps % self.config.trainer.logging_steps == 0:
-                    self.metrics_reporter.log_metrics()
+                    
