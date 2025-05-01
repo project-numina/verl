@@ -75,6 +75,20 @@ class Role(Enum):
     ActorRolloutRef = 6
 
 
+class AdvantageEstimator(str, Enum):
+    """
+    Using an enumeration class to avoid spelling errors in adv_estimator
+    """
+
+    GAE = "gae"
+    GRPO = "grpo"
+    REINFORCE_PLUS_PLUS = "reinforce_plus_plus"
+    REINFORCE_PLUS_PLUS_BASELINE = "reinforce_plus_plus_baseline"
+    REMAX = "remax"
+    RLOO = "rloo"
+    GRPO_PASSK = "grpo_passk"
+
+
 @dataclass
 class ResourcePoolManager:
     """
@@ -274,6 +288,48 @@ def compute_advantage(
             response_mask=grpo_calculation_mask,
             index=data.non_tensor_batch["uid"],
             norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.GRPO_PASSK:
+        advantages, returns = core_algos.compute_grpo_passk_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            index=data.non_tensor_batch["uid"],
+            norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.REINFORCE_PLUS_PLUS_BASELINE:
+        advantages, returns = core_algos.compute_reinforce_plus_plus_baseline_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            index=data.non_tensor_batch["uid"],
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.REINFORCE_PLUS_PLUS:
+        advantages, returns = core_algos.compute_reinforce_plus_plus_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            gamma=gamma,
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.REMAX:
+        advantages, returns = core_algos.compute_remax_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            reward_baselines=data.batch["reward_baselines"],
+            response_mask=data.batch["response_mask"],
+        )
+
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.RLOO:
+        advantages, returns = core_algos.compute_rloo_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            index=data.non_tensor_batch["uid"],
         )
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
