@@ -278,6 +278,48 @@ def compute_advantage(
         )
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.GRPO_PASSK:
+        advantages, returns = core_algos.compute_grpo_passk_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            index=data.non_tensor_batch["uid"],
+            norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.REINFORCE_PLUS_PLUS_BASELINE:
+        advantages, returns = core_algos.compute_reinforce_plus_plus_baseline_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            index=data.non_tensor_batch["uid"],
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.REINFORCE_PLUS_PLUS:
+        advantages, returns = core_algos.compute_reinforce_plus_plus_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            gamma=gamma,
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.REMAX:
+        advantages, returns = core_algos.compute_remax_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            reward_baselines=data.batch["reward_baselines"],
+            response_mask=data.batch["response_mask"],
+        )
+
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.RLOO:
+        advantages, returns = core_algos.compute_rloo_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            index=data.non_tensor_batch["uid"],
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
     else:
         # handle all other adv estimator type other than GAE and GRPO
         adv_estimator_fn = core_algos.get_adv_estimator_fn(adv_estimator)
@@ -1194,13 +1236,8 @@ class RayPPOTrainer:
                     non_tensor_batch_keys_to_pop.append("raw_prompt")
                 if "tools_kwargs" in batch.non_tensor_batch:
                     non_tensor_batch_keys_to_pop.append("tools_kwargs")
-<<<<<<< HEAD
                 if "interaction_kwargs" in batch.non_tensor_batch:
                     non_tensor_batch_keys_to_pop.append("interaction_kwargs")
-                if getattr(self.config.data, "return_extra_info", False):
-                    non_tensor_batch_keys_to_pop.append("extra_info")
-=======
->>>>>>> a608389 (change dataset dump for robustness, message parsing, and extra info)
                 gen_batch = batch.pop(
                     batch_keys=batch_keys_to_pop,
                     non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
