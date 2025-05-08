@@ -820,15 +820,9 @@ reward_model:
   # Default is naive. If all verification functions are multiprocessing-safe,
   # the reward manager can be set to prime for parallel verification.
   reward_manager: naive
-
+  
   # Whether to launch custom reward function asynchronously during log_prob
   launch_reward_fn_async: False
-
-  length_penalty:   
-    enabled: False  # Set to True to enable length penalty
-    alpha: 0.0      # Alpha parameter: positive favors longer sequences, negative favors shorter
-    min_length: 0   # Minimum sequence length before applying penalty
-    max_length: null  # Maximum sequence length (null means no maximum)
 
   # Cloud/local sandbox fusion configuration for custom reward logic
   sandbox_fusion:
