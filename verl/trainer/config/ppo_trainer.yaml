@@ -758,11 +758,6 @@ reward_model:
   forward_max_token_len_per_gpu: ${critic.forward_max_token_len_per_gpu}
   reward_manager: naive
   launch_reward_fn_async: False # custom reward function executed async on CPU, during log_prob
-  length_penalty:   
-    enabled: False  # Set to True to enable length penalty
-    alpha: 0.0      # Alpha parameter: positive favors longer sequences, negative favors shorter
-    min_length: 0   # Minimum sequence length before applying penalty
-    max_length: null  # Maximum sequence length (null means no maximum)
 
   # Whether to enable reward model. If False, we compute the reward only with the user-defined reward functions.
   # In GSM8K and Math examples, we disable reward model.
