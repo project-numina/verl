@@ -623,7 +623,7 @@ class RayPPOTrainer:
         except Exception as e:
             print(f"Warning: Could not set total_training_steps in config. Structure missing? Error: {e}")
 
-    def _dump_generations(self, inputs, outputs, scores, reward_extra_infos_dict, dump_path):
+    def _dump_generations(self, inputs, outputs, scores, reward_extra_infos_dict, data_extra_infos_list, dump_path):
         """Dump rollout/validation samples as JSONL."""
         os.makedirs(dump_path, exist_ok=True)
         filename = os.path.join(dump_path, f"{self.global_steps}.jsonl")
@@ -639,6 +639,17 @@ class RayPPOTrainer:
         for k, v in reward_extra_infos_dict.items():
             if len(v) == n:
                 base_data[k] = v
+        
+        if len(data_extra_infos_list):
+            required_keys = set(data_extra_infos_list[0].keys())
+            
+            for i, entry in enumerate(data_extra_infos_list):
+                missing_keys = required_keys - set(entry.keys())
+                if missing_keys:
+                    raise ValueError(f"Entry {i} is missing required keys: {missing_keys}")
+            
+            for key in required_keys:
+                base_data[key] = [entry[key] for entry in data_extra_infos_list]
 
         lines = []
         for i in range(n):
@@ -697,8 +708,7 @@ class RayPPOTrainer:
 
             # Store original inputs
             input_ids = test_batch.batch["input_ids"]
-            # TODO: Can we keep special tokens except for padding tokens?
-            input_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in input_ids]
+            input_texts = self.decode_tokens(input_ids, keep_special_tokens=True)
             sample_inputs.extend(input_texts)
 
             batch_keys_to_pop = ["input_ids", "attention_mask", "position_ids"]
@@ -711,12 +721,12 @@ class RayPPOTrainer:
                 non_tensor_batch_keys_to_pop.append("tools_kwargs")
             if "interaction_kwargs" in test_batch.non_tensor_batch:
                 non_tensor_batch_keys_to_pop.append("interaction_kwargs")
-            if getattr(self.config.data, "return_extra_info", False):
-                non_tensor_batch_keys_to_pop.append("extra_info")
             test_gen_batch = test_batch.pop(
                 batch_keys=batch_keys_to_pop,
                 non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
             )
+            if getattr(self.config.data, "return_extra_info", False):
+                test_gen_batch.non_tensor_batch["extra_info"] = test_batch.non_tensor_batch["extra_info"]
 
             test_gen_batch.meta_info = {
                 "eos_token_id": self.tokenizer.eos_token_id,
@@ -745,7 +755,7 @@ class RayPPOTrainer:
 
             # Store generated outputs
             output_ids = test_output_gen_batch.batch["responses"]
-            output_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids]
+            output_texts = self.decode_tokens(output_ids, keep_special_tokens=False)
             sample_outputs.extend(output_texts)
 
             test_batch = test_batch.union(test_output_gen_batch)
@@ -770,11 +780,13 @@ class RayPPOTrainer:
         # dump generations
         val_data_dir = self.config.trainer.get("validation_data_dir", None)
         if val_data_dir:
+            data_extra_infos_list = test_batch.non_tensor_batch.get("extra_info", [{} for _ in range(len(sample_inputs))])
             self._dump_generations(
                 inputs=sample_inputs,
                 outputs=sample_outputs,
                 scores=sample_scores,
                 reward_extra_infos_dict=reward_extra_infos_dict,
+                data_extra_infos_list=data_extra_infos_list,
                 dump_path=val_data_dir,
             )
 
@@ -802,6 +814,27 @@ class RayPPOTrainer:
                     metric_dict[pfx] = metric_val
 
         return metric_dict
+
+    def decode_tokens(self, token_ids, keep_special_tokens=False):
+        """Decode token IDs into text, optionally keeping special tokens but always removing padding.
+        
+        Args:
+            token_ids (torch.Tensor): Token IDs to decode
+            keep_special_tokens (bool): Whether to keep special tokens in the decoded text
+            
+        Returns:
+            list[str]: List of decoded texts
+        """
+        pad_token_id = self.tokenizer.pad_token_id
+        texts = []
+        for ids in token_ids:
+            # Create a mask where padding tokens are False
+            mask = ids != pad_token_id
+            # Only decode the non-padding tokens
+            filtered_ids = ids[mask]
+            decoded_text = self.tokenizer.decode(filtered_ids, skip_special_tokens=not keep_special_tokens)
+            texts.append(decoded_text)
+        return texts
 
     def init_workers(self):
         """Initialize distributed training workers using Ray backend.
@@ -1161,14 +1194,19 @@ class RayPPOTrainer:
                     non_tensor_batch_keys_to_pop.append("raw_prompt")
                 if "tools_kwargs" in batch.non_tensor_batch:
                     non_tensor_batch_keys_to_pop.append("tools_kwargs")
+<<<<<<< HEAD
                 if "interaction_kwargs" in batch.non_tensor_batch:
                     non_tensor_batch_keys_to_pop.append("interaction_kwargs")
                 if getattr(self.config.data, "return_extra_info", False):
                     non_tensor_batch_keys_to_pop.append("extra_info")
+=======
+>>>>>>> a608389 (change dataset dump for robustness, message parsing, and extra info)
                 gen_batch = batch.pop(
                     batch_keys=batch_keys_to_pop,
                     non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
                 )
+                if getattr(self.config.data, "return_extra_info", False):
+                    gen_batch.non_tensor_batch["extra_info"] = batch.non_tensor_batch["extra_info"]
 
                 is_last_step = self.global_steps >= self.total_training_steps
 
@@ -1342,14 +1380,16 @@ class RayPPOTrainer:
                     if rollout_data_dir:
                         with marked_timer("dump_rollout_generations", timing_raw, color="green"):
                             print(batch.batch.keys())
-                            inputs = self.tokenizer.batch_decode(batch.batch["prompts"], skip_special_tokens=True)
-                            outputs = self.tokenizer.batch_decode(batch.batch["responses"], skip_special_tokens=True)
+                            inputs = self.decode_tokens(batch.batch["prompts"], keep_special_tokens=True)
+                            outputs = self.decode_tokens(batch.batch["responses"], keep_special_tokens=True)
                             scores = batch.batch["token_level_scores"].sum(-1).cpu().tolist()
+                            data_extra_infos_list = batch.non_tensor_batch.get("extra_info", [{} for _ in range(len(inputs))])
                             self._dump_generations(
                                 inputs=inputs,
                                 outputs=outputs,
                                 scores=scores,
                                 reward_extra_infos_dict=reward_extra_infos_dict,
+                                data_extra_infos_list=data_extra_infos_list,
                                 dump_path=rollout_data_dir,
                             )
 
