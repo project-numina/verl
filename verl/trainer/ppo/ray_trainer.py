@@ -52,6 +52,7 @@ from verl.trainer.ppo.metric_utils import (
     process_validation_metrics,
 )
 from verl.trainer.ppo.reward import compute_reward, compute_reward_async
+from verl.trainer.ppo.SIL import RolloutDatabase
 from verl.utils.checkpoint.checkpoint_manager import find_latest_ckpt_path
 from verl.utils.metric import (
     reduce_metrics,
@@ -521,15 +522,15 @@ class RayPPOTrainer:
         for k, v in reward_extra_infos_dict.items():
             if len(v) == n:
                 base_data[k] = v
-        
+
         if len(data_extra_infos_list):
             required_keys = set(data_extra_infos_list[0].keys())
-            
+
             for i, entry in enumerate(data_extra_infos_list):
                 missing_keys = required_keys - set(entry.keys())
                 if missing_keys:
                     raise ValueError(f"Entry {i} is missing required keys: {missing_keys}")
-            
+
             for key in required_keys:
                 base_data[key] = [entry[key] for entry in data_extra_infos_list]
 
@@ -683,11 +684,11 @@ class RayPPOTrainer:
 
     def decode_tokens(self, token_ids, keep_special_tokens=False):
         """Decode token IDs into text, optionally keeping special tokens but always removing padding.
-        
+
         Args:
             token_ids (torch.Tensor): Token IDs to decode
             keep_special_tokens (bool): Whether to keep special tokens in the decoded text
-            
+
         Returns:
             list[str]: List of decoded texts
         """
@@ -972,6 +973,8 @@ class RayPPOTrainer:
         self.global_steps += 1
         last_val_metrics = None
 
+        rolloutDatabase = RolloutDatabase(10, 0.5)
+
         for epoch in range(self.config.trainer.total_epochs):
             for batch_dict in self.train_dataloader:
                 metrics = {}
@@ -1087,6 +1090,30 @@ class RayPPOTrainer:
 
                         if reward_extra_infos_dict:
                             batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
+
+                        if True:
+                            with _timer("sil", timing_raw):
+                                rolloutDatabase.add(batch)
+                                ids_to_recompute, ids_to_keep = rolloutDatabase.replace(batch)
+
+                                if len(ids_to_recompute):
+                                    to_recompute = batch.select_idxs(ids_to_recompute)
+                                    to_keep = batch.select_idxs(ids_to_keep)
+
+                                    # recompute old_log_probs
+                                    with _timer("old_log_prob", timing_raw):
+                                        old_log_prob = self.actor_rollout_wg.compute_log_prob(to_recompute)
+                                        entropys = old_log_prob.batch["entropys"]
+                                        old_log_prob.batch.pop("entropys")
+                                        to_recompute = to_recompute.union(old_log_prob)
+
+                                    if self.use_reference_policy:
+                                        # compute reference log_prob
+                                        with _timer("ref", timing_raw):
+                                            ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(to_recompute)
+                                            to_recompute = to_recompute.union(ref_log_prob)
+
+                                    batch = DataProto.concat([to_keep, to_recompute])
 
                         # compute rewards. apply_kl_penalty if available
                         if self.config.algorithm.use_kl_in_reward:
