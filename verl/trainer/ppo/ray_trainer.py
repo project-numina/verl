@@ -52,6 +52,7 @@ from verl.trainer.ppo.metric_utils import (
     process_validation_metrics,
 )
 from verl.trainer.ppo.reward import compute_reward, compute_reward_async
+from verl.trainer.ppo.SIL import RolloutDatabase
 from verl.utils.checkpoint.checkpoint_manager import find_latest_ckpt_path
 from verl.utils.metric import (
     reduce_metrics,
@@ -532,15 +533,15 @@ class RayPPOTrainer:
         for k, v in reward_extra_infos_dict.items():
             if len(v) == n:
                 base_data[k] = v
-        
+
         if len(data_extra_infos_list):
             required_keys = set(data_extra_infos_list[0].keys())
-            
+
             for i, entry in enumerate(data_extra_infos_list):
                 missing_keys = required_keys - set(entry.keys())
                 if missing_keys:
                     raise ValueError(f"Entry {i} is missing required keys: {missing_keys}")
-            
+
             for key in required_keys:
                 base_data[key] = [entry[key] for entry in data_extra_infos_list]
 
@@ -694,11 +695,11 @@ class RayPPOTrainer:
 
     def decode_tokens(self, token_ids, keep_special_tokens=False):
         """Decode token IDs into text, optionally keeping special tokens but always removing padding.
-        
+
         Args:
             token_ids (torch.Tensor): Token IDs to decode
             keep_special_tokens (bool): Whether to keep special tokens in the decoded text
-            
+
         Returns:
             list[str]: List of decoded texts
         """
@@ -983,6 +984,8 @@ class RayPPOTrainer:
         self.global_steps += 1
         last_val_metrics = None
 
+        rolloutDatabase = RolloutDatabase(10, 0.5)
+
         for epoch in range(self.config.trainer.total_epochs):
             for batch_dict in self.train_dataloader:
                 metrics = {}
@@ -1119,6 +1122,11 @@ class RayPPOTrainer:
                             norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
                             multi_turn=self.config.actor_rollout_ref.rollout.multi_turn.enable,
                         )
+
+                    if True:
+                        with _timer("sil", timing_raw):
+                            rolloutDatabase.add(batch)
+                            batch = rolloutDatabase.replace(batch)
 
                     # update critic
                     if self.use_critic:
