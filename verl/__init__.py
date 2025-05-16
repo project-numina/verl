@@ -15,7 +15,7 @@
 import logging
 import os
 
-from .protocol import DataProto
+from .protocol import DataProto, DataProtoItem
 from .utils.logging_utils import set_basic_config
 
 version_folder = os.path.dirname(os.path.join(os.path.abspath(__file__)))
@@ -27,7 +27,7 @@ with open(os.path.join(version_folder, "version/version")) as f:
 set_basic_config(level=logging.WARNING)
 
 
-__all__ = ["DataProto", "__version__"]
+__all__ = ["DataProto", "DataProtoItem", "__version__"]
 
 if os.getenv("VERL_USE_MODELSCOPE", "False").lower() == "true":
     import importlib
