@@ -16,7 +16,8 @@ import random
 from collections import defaultdict, deque
 from typing import Dict
 
-from verl import DataProto, DataProtoItem
+from verl import DataProto
+from verl.protocol import DataProtoItem
 
 
 class RolloutDatabase:
