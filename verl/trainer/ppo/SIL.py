@@ -46,7 +46,7 @@ class RolloutDatabase:
         """
         for idx in range(len(rollout_batch)):
             rollout_item = rollout_batch[idx]
-            prompt_idx = rollout_item.batch["index"]
+            prompt_idx = rollout_item.non_tensor_batch["index"]
             # Check if the reward is above the threshold
             if rollout_item.batch["acc"] >= self.reward_threshold:
                 self._buckets[prompt_idx].append(rollout_item)
@@ -67,7 +67,7 @@ class RolloutDatabase:
 
         for idx in range(len(rollout_batch)):
             rollout_item = rollout_batch[idx]
-            prompt_idx = rollout_item.batch["index"]
+            prompt_idx = rollout_item.non_tensor_batch["index"]
             # Check if the reward is below the threshold
             if rollout_item.batch["acc"] < self.reward_threshold:
                 # Replace with a random successful rollout from the database
