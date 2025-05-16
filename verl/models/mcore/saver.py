@@ -381,7 +381,7 @@ def merge_megatron_ckpt_gptmodel(wrapped_models, config, dtype, is_value_model=F
                     f"{layer_name}.self_attn.k_norm.weight",
                     src_pp_rank=src_pp_rank,
                 )
-
+                
             _broadcast_tp_shard_tensor_qkv(
                 sync_layer.self_attention.linear_qkv.weight,
                 f"{layer_name}.self_attn.q_proj.weight",
