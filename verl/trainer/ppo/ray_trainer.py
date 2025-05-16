@@ -1102,6 +1102,30 @@ class RayPPOTrainer:
                         if reward_extra_infos_dict:
                             batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
 
+                        if True:
+                            with _timer("sil", timing_raw):
+                                rolloutDatabase.add(batch)
+                                ids_to_recompute, ids_to_keep = rolloutDatabase.replace(batch)
+
+                                if len(ids_to_recompute):
+                                    to_recompute = batch.select_idxs(ids_to_recompute)
+                                    to_keep = batch.select_idxs(ids_to_keep)
+
+                                    # recompute old_log_probs
+                                    with _timer("old_log_prob", timing_raw):
+                                        old_log_prob = self.actor_rollout_wg.compute_log_prob(to_recompute)
+                                        entropys = old_log_prob.batch["entropys"]
+                                        old_log_prob.batch.pop("entropys")
+                                        to_recompute = to_recompute.union(old_log_prob)
+
+                                    if self.use_reference_policy:
+                                        # compute reference log_prob
+                                        with _timer("ref", timing_raw):
+                                            ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(to_recompute)
+                                            to_recompute = to_recompute.union(ref_log_prob)
+
+                                    batch = DataProto.concat([to_keep, to_recompute])
+
                         # compute rewards. apply_kl_penalty if available
                         if self.config.algorithm.use_kl_in_reward:
                             batch, kl_metrics = apply_kl_penalty(batch, kl_ctrl=self.kl_ctrl_in_reward, kl_penalty=self.config.algorithm.kl_penalty)
@@ -1122,11 +1146,6 @@ class RayPPOTrainer:
                             norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
                             multi_turn=self.config.actor_rollout_ref.rollout.multi_turn.enable,
                         )
-
-                    if True:
-                        with _timer("sil", timing_raw):
-                            rolloutDatabase.add(batch)
-                            batch = rolloutDatabase.replace(batch)
 
                     # update critic
                     if self.use_critic:

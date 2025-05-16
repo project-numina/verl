@@ -56,7 +56,14 @@ class RolloutDatabase:
         Replace failed rollouts in the batch with successful ones from the database.
         Args:
             rollout_batch (DataProto): Batch of rollouts to replace.
+
+        Returns:
+            ids_to_recompute (list): List of indices in the batch that have been modified.
+            ids_to_keep (list): List of indices in the batch that can be kept as is.
         """
+
+        ids_to_recompute = []
+        ids_to_keep = []
 
         for idx in range(len(rollout_batch)):
             rollout_item = rollout_batch[idx]
@@ -71,4 +78,9 @@ class RolloutDatabase:
                     for key in rollout_item.non_tensor_batch.keys():
                         rollout_item.non_tensor_batch[key] = replacement.non_tensor_batch[key]
 
-        return rollout_batch
+                    ids_to_recompute.append(idx)
+
+            else:
+                ids_to_keep.append(idx)
+
+        return ids_to_recompute, ids_to_keep
