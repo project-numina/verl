@@ -79,7 +79,11 @@ class RolloutDatabase:
                         rollout_item.non_tensor_batch[key] = replacement.non_tensor_batch[key]
 
                     ids_to_recompute.append(idx)
+                # No successful rollout in the database, keep the original
+                else:
+                    ids_to_keep.append(idx)
 
+            # Reward is above the threshold, keep the original
             else:
                 ids_to_keep.append(idx)
 
