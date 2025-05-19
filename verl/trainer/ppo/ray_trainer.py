@@ -1107,6 +1107,15 @@ class RayPPOTrainer:
                                 rolloutDatabase.add(batch)
                                 ids_to_recompute, ids_to_keep = rolloutDatabase.replace(batch)
 
+                                print(f"Recompute {len(ids_to_recompute)} samples fetched from the Rollout database")
+                                # we need to recoompute for a % 8 batch
+                                to_add_to_recompute = 8 - len(ids_to_recompute) % 8
+                                if to_add_to_recompute > 0:
+                                    ids_to_recompute.extend(ids_to_keep[:to_add_to_recompute])
+                                    ids_to_keep = ids_to_keep[to_add_to_recompute:]\
+                                
+                                print(f"Recompute {len(ids_to_recompute)} samples fetched from the Rollout database after padding")
+
                                 if len(ids_to_recompute):
                                     to_recompute = batch.select_idxs(ids_to_recompute)
                                     to_keep = batch.select_idxs(ids_to_keep)
@@ -1119,8 +1128,8 @@ class RayPPOTrainer:
                                         old_log_prob.batch.pop("entropys")
                                         to_recompute = to_recompute.union(old_log_prob)
 
+                                    # compute reference log_prob
                                     if self.use_reference_policy:
-                                        # compute reference log_prob
                                         with _timer("ref", timing_raw):
                                             to_recompute.batch.pop("ref_log_prob")
                                             ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(to_recompute)
