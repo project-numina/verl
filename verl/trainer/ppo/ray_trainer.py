@@ -1113,6 +1113,7 @@ class RayPPOTrainer:
 
                                     # recompute old_log_probs
                                     with _timer("old_log_prob", timing_raw):
+                                        to_recompute.batch.pop("old_log_probs")
                                         old_log_prob = self.actor_rollout_wg.compute_log_prob(to_recompute)
                                         entropys = old_log_prob.batch["entropys"]
                                         old_log_prob.batch.pop("entropys")
@@ -1121,6 +1122,7 @@ class RayPPOTrainer:
                                     if self.use_reference_policy:
                                         # compute reference log_prob
                                         with _timer("ref", timing_raw):
+                                            to_recompute.batch.pop("ref_log_prob")
                                             ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(to_recompute)
                                             to_recompute = to_recompute.union(ref_log_prob)
 
