@@ -1110,7 +1110,7 @@ class RayPPOTrainer:
                                 print(f"Recompute {len(ids_to_recompute)} samples fetched from the Rollout database")
                                 # we need to recompute for a % 8 batch
                                 # TODO: fix harcoded 8 value
-                                to_add_to_recompute = 8 - len(ids_to_recompute) % 8
+                                to_add_to_recompute = 8 - len(ids_to_recompute) % 8 if len(ids_to_recompute) % 8 != 0 else 0
                                 if to_add_to_recompute > 0:
                                     ids_to_recompute.extend(ids_to_keep[:to_add_to_recompute])
                                     ids_to_keep = ids_to_keep[to_add_to_recompute:]
