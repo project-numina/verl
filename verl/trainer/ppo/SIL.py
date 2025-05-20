@@ -53,7 +53,9 @@ class RolloutDatabase:
 
     def replace(self, rollout_batch: DataProto):
         """
-        Replace failed rollouts in the batch with successful ones from the database.
+        Replace a single failed rollout in the batch with a successful one from the database,
+        but only if *all* rollouts for a prompt are below the reward threshold.
+
         Args:
             rollout_batch (DataProto): Batch of rollouts to replace.
 
@@ -61,30 +63,35 @@ class RolloutDatabase:
             ids_to_recompute (list): List of indices in the batch that have been modified.
             ids_to_keep (list): List of indices in the batch that can be kept as is.
         """
-
         ids_to_recompute = []
         ids_to_keep = []
 
+        # group all rollouts by prompt index
+        prompt_to_indices = defaultdict(list)
         for idx in range(len(rollout_batch)):
-            rollout_item = rollout_batch[idx]
-            prompt_idx = rollout_item.non_tensor_batch["index"]
-            # Check if the reward is below the threshold
-            if rollout_item.batch["acc"] < self.reward_threshold:
-                # Replace with a random successful rollout from the database
-                if self._buckets[prompt_idx]:
-                    replacement = random.choice(list(self._buckets[prompt_idx]))
-                    for key in rollout_item.batch.keys():
-                        rollout_item.batch[key] = replacement.batch[key]
-                    for key in rollout_item.non_tensor_batch.keys():
-                        rollout_item.non_tensor_batch[key] = replacement.non_tensor_batch[key]
+            prompt_idx = rollout_batch[idx].non_tensor_batch["index"]
+            prompt_to_indices[prompt_idx].append(idx)
 
-                    ids_to_recompute.append(idx)
-                # No successful rollout in the database, keep the original
-                else:
-                    ids_to_keep.append(idx)
+        for prompt_idx, indices in prompt_to_indices.items():
+            # Check if all responses for that prompt are below the threshold
+            all_below_threshold = all(rollout_batch[i].batch["acc"] < self.reward_threshold for i in indices)
 
-            # Reward is above the threshold, keep the original
+            if all_below_threshold and self._buckets[prompt_idx]:
+                # Replace only one of them with a successful sample
+                to_replace_idx = indices[0]
+                replacement = random.choice(list(self._buckets[prompt_idx]))
+
+                rollout_item = rollout_batch[to_replace_idx]
+                for key in rollout_item.batch.keys():
+                    rollout_item.batch[key] = replacement.batch[key]
+                for key in rollout_item.non_tensor_batch.keys():
+                    rollout_item.non_tensor_batch[key] = replacement.non_tensor_batch[key]
+
+                ids_to_recompute.append(to_replace_idx)
+                # Keep the rest
+                ids_to_keep.extend(indices[1:])
             else:
-                ids_to_keep.append(idx)
+                # Keep all original rollouts
+                ids_to_keep.extend(indices)
 
         return ids_to_recompute, ids_to_keep
