@@ -253,6 +253,7 @@ def compute_grpo_outcome_advantage(
 
     return scores, scores
 
+
 def compute_grpo_passk_outcome_advantage(
     token_level_rewards: torch.Tensor,
     response_mask: torch.Tensor,
