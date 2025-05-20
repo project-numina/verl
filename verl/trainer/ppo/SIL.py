@@ -51,7 +51,7 @@ class RolloutDatabase:
             if rollout_item.batch["acc"] >= self.reward_threshold:
                 self._buckets[prompt_idx].append(rollout_item)
 
-    def replace(self, rollout_batch: DataProto):
+    def replace_one_if_all_failed(self, rollout_batch: DataProto):
         """
         Replace a single failed rollout in the batch with a successful one from the database,
         but only if *all* rollouts for a prompt are below the reward threshold.
