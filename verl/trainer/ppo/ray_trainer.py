@@ -826,6 +826,12 @@ class RayPPOTrainer:
         with open(local_latest_checkpointed_iteration, "w") as f:
             f.write(str(self.global_steps))
 
+        # save rollout database
+        rollout_db_local_dir = os.path.join(local_global_step_folder, "rollout_db")
+        os.makedirs(rollout_db_local_dir, exist_ok=True)
+        rollout_db_local_path = os.path.join(rollout_db_local_dir, f"rollout_db_{self.global_steps}.pkl")
+        self.rolloutDatabase.save(rollout_db_local_path)
+
     def _load_checkpoint(self):
         if self.config.trainer.resume_mode == "disable":
             return 0
@@ -876,6 +882,11 @@ class RayPPOTrainer:
             self.train_dataloader.load_state_dict(dataloader_state_dict)
         else:
             print(f"Warning: No dataloader state found at {dataloader_local_path}, will start from scratch")
+
+        # load rollout database
+        rollout_db_local_path = os.path.join(global_step_folder, "rollout_db", f"rollout_db_{self.global_steps}.pkl")
+        self.rolloutDatabase.load(rollout_db_local_path)
+        print(f"Loaded rollout database from {rollout_db_local_path}")
 
     def _balance_batch(self, batch: DataProto, metrics, logging_prefix="global_seqlen"):
         """Reorder the data on single controller such that each dp rank gets similar total tokens"""
