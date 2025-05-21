@@ -57,7 +57,7 @@ class RolloutDatabase:
         but only if *all* rollouts for a prompt are below the reward threshold.
 
         Args:
-            rollout_batch (DataProto): Batch of rollouts to replace.
+            rollout_batch (DataProto): Batch of rollouts to replace. Modified in place.
 
         Returns:
             ids_to_recompute (list): List of indices in the batch that have been modified.

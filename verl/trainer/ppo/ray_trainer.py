@@ -984,7 +984,7 @@ class RayPPOTrainer:
         self.global_steps += 1
         last_val_metrics = None
 
-        rolloutDatabase = RolloutDatabase(10, 0.5)
+        rolloutDatabase = RolloutDatabase(10, self.config.reward_model.custom_reward_function.success_threshold)
 
         for epoch in range(self.config.trainer.total_epochs):
             for batch_dict in self.train_dataloader:
@@ -1102,15 +1102,17 @@ class RayPPOTrainer:
                         if reward_extra_infos_dict:
                             batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
 
-                        if True:
+                        # add to rollout database
+                        rolloutDatabase.add(batch)
+                        if self.config.algorithm.self_imitation_learning:
                             with _timer("sil", timing_raw):
-                                rolloutDatabase.add(batch)
                                 ids_to_recompute, ids_to_keep = rolloutDatabase.replace_one_if_all_failed(batch)
 
                                 print(f"Recompute {len(ids_to_recompute)} samples fetched from the Rollout database")
-                                # we need to recompute for a % 8 batch
-                                # TODO: fix harcoded 8 value
-                                to_add_to_recompute = 8 - len(ids_to_recompute) % 8 if len(ids_to_recompute) % 8 != 0 else 0
+                                # Pad to the next multiple of 8 if needed
+                                # TODO: might failed in multi-node, need to check
+                                world_size = self.actor_rollout_wg.world_size
+                                to_add_to_recompute = (world_size - len(ids_to_recompute) % world_size) % world_size
                                 if to_add_to_recompute > 0:
                                     ids_to_recompute.extend(ids_to_keep[:to_add_to_recompute])
                                     ids_to_keep = ids_to_keep[to_add_to_recompute:]
