@@ -122,5 +122,5 @@ class RolloutDatabase:
         with open(filepath, "rb") as f:
             data = pickle.load(f)
             self._buckets = defaultdict(lambda: deque(maxlen=self.k))
-            for k, v in data["buckets"].items():
+            for k, v in data.items():
                 self._buckets[k] = deque(v, maxlen=self.k)
