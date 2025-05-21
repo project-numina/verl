@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import pickle
 import random
 from collections import defaultdict, deque
 from typing import Dict
@@ -95,3 +97,30 @@ class RolloutDatabase:
                 ids_to_keep.extend(indices)
 
         return ids_to_recompute, ids_to_keep
+
+    def save(self, filepath: str):
+        """
+        Save the current rollout database buckets to disk
+
+        Args:
+            filepath (str): Path to the file where the database should be saved.
+        """
+        with open(filepath, "wb") as f:
+            serializable_buckets = {k: list(v) for k, v in self._buckets.items()}
+            pickle.dump(serializable_buckets, f)
+
+    def load(self, filepath: str):
+        """
+        Load a rollout database from disk.
+
+        Args:
+            filepath (str): Path to the saved database file.
+        """
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"No saved database found at: {filepath}")
+
+        with open(filepath, "rb") as f:
+            data = pickle.load(f)
+            self._buckets = defaultdict(lambda: deque(maxlen=self.k))
+            for k, v in data["buckets"].items():
+                self._buckets[k] = deque(v, maxlen=self.k)

@@ -792,6 +792,8 @@ class RayPPOTrainer:
                 worker_group=self.actor_rollout_wg,
             )
 
+        self.rolloutDatabase = RolloutDatabase(10, self.config.reward_model.custom_reward_function.success_threshold)
+
     def _save_checkpoint(self):
         # path: given_path + `/global_step_{global_steps}` + `/actor`
         local_global_step_folder = os.path.join(self.config.trainer.default_local_dir, f"global_step_{self.global_steps}")
@@ -984,8 +986,6 @@ class RayPPOTrainer:
         self.global_steps += 1
         last_val_metrics = None
 
-        rolloutDatabase = RolloutDatabase(10, self.config.reward_model.custom_reward_function.success_threshold)
-
         for epoch in range(self.config.trainer.total_epochs):
             for batch_dict in self.train_dataloader:
                 metrics = {}
@@ -1103,10 +1103,10 @@ class RayPPOTrainer:
                             batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
 
                         # add to rollout database
-                        rolloutDatabase.add(batch)
+                        self.rolloutDatabase.add(batch)
                         if self.config.algorithm.self_imitation_learning:
                             with _timer("sil", timing_raw):
-                                ids_to_recompute, ids_to_keep = rolloutDatabase.replace_one_if_all_failed(batch)
+                                ids_to_recompute, ids_to_keep = self.rolloutDatabase.replace_one_if_all_failed(batch)
 
                                 print(f"Recompute {len(ids_to_recompute)} samples fetched from the Rollout database")
                                 # Pad to the next multiple of 8 if needed
@@ -1117,7 +1117,7 @@ class RayPPOTrainer:
                                     ids_to_recompute.extend(ids_to_keep[:to_add_to_recompute])
                                     ids_to_keep = ids_to_keep[to_add_to_recompute:]
 
-                                print(f"Recompute {len(ids_to_recompute)} samples fetched from the Rollout database after padding")
+                                print(f"Recompute {len(ids_to_recompute)} samples to recompute after padding and SIL")
 
                                 if len(ids_to_recompute):
                                     to_recompute = batch.select_idxs(ids_to_recompute)
