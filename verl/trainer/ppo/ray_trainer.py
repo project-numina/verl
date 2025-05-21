@@ -792,7 +792,7 @@ class RayPPOTrainer:
                 worker_group=self.actor_rollout_wg,
             )
 
-        self.rolloutDatabase = RolloutDatabase(10, self.config.reward_model.custom_reward_function.success_threshold)
+        self.rolloutDatabase = RolloutDatabase(10, self.config.custom_reward_function.success_threshold)
 
     def _save_checkpoint(self):
         # path: given_path + `/global_step_{global_steps}` + `/actor`
