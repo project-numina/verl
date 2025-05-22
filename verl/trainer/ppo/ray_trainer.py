@@ -1140,15 +1140,18 @@ class RayPPOTrainer:
                                         old_log_prob.batch.pop("entropys")
                                         to_recompute = to_recompute.union(old_log_prob)
 
-                                    # compute reference log_prob
+                                    # recompute reference log_prob
                                     if self.use_reference_policy:
                                         with _timer("sil/ref", timing_raw):
                                             to_recompute.batch.pop("ref_log_prob")
                                             ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(to_recompute)
                                             to_recompute = to_recompute.union(ref_log_prob)
 
-                                    batch.batch["old_log_probs"][ids_to_recompute] = to_recompute.batch["old_log_probs"]
-                                    batch.batch["ref_log_prob"][ids_to_recompute] = to_recompute.batch["ref_log_prob"]
+                                    # copy in the original batch
+                                    for key in to_recompute.batch.keys():
+                                        batch.batch[key][ids_to_recompute] = to_recompute.batch[key]
+                                    for key in to_recompute.non_tensor_batch.keys():
+                                        batch.non_tensor_batch[key][ids_to_recompute] = to_recompute.non_tensor_batch[key]
 
                         # compute rewards. apply_kl_penalty if available
                         if self.config.algorithm.use_kl_in_reward:
