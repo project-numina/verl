@@ -1119,7 +1119,8 @@ class RayPPOTrainer:
                             with _timer("sil", timing_raw):
                                 ids_to_recompute, ids_to_keep = self.rolloutDatabase.replace_one_if_all_failed(batch)
 
-                                print(f"Recompute {len(ids_to_recompute)} samples fetched from the Rollout database")
+                                sil_metrics = {"sil/n_replaced_generation": len(ids_to_recompute)}
+                                metrics.update(sil_metrics)
                                 # Pad to the next multiple of 8 if needed
                                 # TODO: might failed in multi-node, need to check
                                 world_size = self.actor_rollout_wg.world_size
@@ -1128,14 +1129,12 @@ class RayPPOTrainer:
                                     ids_to_recompute.extend(ids_to_keep[:to_add_to_recompute])
                                     ids_to_keep = ids_to_keep[to_add_to_recompute:]
 
-                                print(f"Recompute {len(ids_to_recompute)} samples to recompute after padding and SIL")
-
                                 if len(ids_to_recompute):
                                     to_recompute = batch.select_idxs(ids_to_recompute)
                                     to_keep = batch.select_idxs(ids_to_keep)
 
                                     # recompute old_log_probs
-                                    with _timer("old_log_prob", timing_raw):
+                                    with _timer("sil/old_log_prob", timing_raw):
                                         to_recompute.batch.pop("old_log_probs")
                                         old_log_prob = self.actor_rollout_wg.compute_log_prob(to_recompute)
                                         entropys = old_log_prob.batch["entropys"]
@@ -1144,7 +1143,7 @@ class RayPPOTrainer:
 
                                     # compute reference log_prob
                                     if self.use_reference_policy:
-                                        with _timer("ref", timing_raw):
+                                        with _timer("sil/ref", timing_raw):
                                             to_recompute.batch.pop("ref_log_prob")
                                             ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(to_recompute)
                                             to_recompute = to_recompute.union(ref_log_prob)
