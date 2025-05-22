@@ -83,11 +83,10 @@ class RolloutDatabase:
                 to_replace_idx = indices[0]
                 replacement = random.choice(list(self._buckets[prompt_idx]))
 
-                rollout_item = rollout_batch[to_replace_idx]
-                for key in rollout_item.batch.keys():
-                    rollout_item.batch[key] = replacement.batch[key]
-                for key in rollout_item.non_tensor_batch.keys():
-                    rollout_item.non_tensor_batch[key] = replacement.non_tensor_batch[key]
+                for key in replacement.batch.keys():
+                    rollout_batch.batch[key][to_replace_idx] = replacement.batch[key]
+                for key in replacement.non_tensor_batch.keys():
+                    rollout_batch.non_tensor_batch[key][to_replace_idx] = replacement.non_tensor_batch[key]
 
                 ids_to_recompute.append(to_replace_idx)
                 # Keep the rest

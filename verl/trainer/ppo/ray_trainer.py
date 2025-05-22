@@ -1131,7 +1131,6 @@ class RayPPOTrainer:
 
                                 if len(ids_to_recompute):
                                     to_recompute = batch.select_idxs(ids_to_recompute)
-                                    to_keep = batch.select_idxs(ids_to_keep)
 
                                     # recompute old_log_probs
                                     with _timer("sil/old_log_prob", timing_raw):
@@ -1148,7 +1147,8 @@ class RayPPOTrainer:
                                             ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(to_recompute)
                                             to_recompute = to_recompute.union(ref_log_prob)
 
-                                    batch = DataProto.concat([to_keep, to_recompute])
+                                    batch.batch["old_log_probs"][ids_to_recompute] = to_recompute.batch["old_log_probs"]
+                                    batch.batch["ref_log_prob"][ids_to_recompute] = to_recompute.batch["ref_log_prob"]
 
                         # compute rewards. apply_kl_penalty if available
                         if self.config.algorithm.use_kl_in_reward:
