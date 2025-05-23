@@ -521,15 +521,15 @@ class RayPPOTrainer:
         for k, v in reward_extra_infos_dict.items():
             if len(v) == n:
                 base_data[k] = v
-        
+
         if len(data_extra_infos_list):
             required_keys = set(data_extra_infos_list[0].keys())
-            
+
             for i, entry in enumerate(data_extra_infos_list):
                 missing_keys = required_keys - set(entry.keys())
                 if missing_keys:
                     raise ValueError(f"Entry {i} is missing required keys: {missing_keys}")
-            
+
             for key in required_keys:
                 base_data[key] = [entry[key] for entry in data_extra_infos_list]
 
@@ -627,7 +627,7 @@ class RayPPOTrainer:
 
             # Store generated outputs
             output_ids = test_output_gen_batch.batch["responses"]
-            output_texts = self.decode_tokens(output_ids, keep_special_tokens=False)
+            output_texts = self.decode_tokens(output_ids, keep_special_tokens=True)
             sample_outputs.extend(output_texts)
 
             test_batch = test_batch.union(test_output_gen_batch)
@@ -683,11 +683,11 @@ class RayPPOTrainer:
 
     def decode_tokens(self, token_ids, keep_special_tokens=False):
         """Decode token IDs into text, optionally keeping special tokens but always removing padding.
-        
+
         Args:
             token_ids (torch.Tensor): Token IDs to decode
             keep_special_tokens (bool): Whether to keep special tokens in the decoded text
-            
+
         Returns:
             list[str]: List of decoded texts
         """
