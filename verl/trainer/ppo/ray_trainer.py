@@ -1136,7 +1136,6 @@ class RayPPOTrainer:
                                     with _timer("sil/old_log_prob", timing_raw):
                                         to_recompute.batch.pop("old_log_probs")
                                         old_log_prob = self.actor_rollout_wg.compute_log_prob(to_recompute)
-                                        entropys = old_log_prob.batch["entropys"]
                                         old_log_prob.batch.pop("entropys")
                                         to_recompute = to_recompute.union(old_log_prob)
 
