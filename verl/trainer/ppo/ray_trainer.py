@@ -52,6 +52,7 @@ from verl.trainer.ppo.metric_utils import (
     process_validation_metrics,
 )
 from verl.trainer.ppo.reward import compute_reward, compute_reward_async
+from verl.trainer.ppo.SIL import RolloutDatabase
 from verl.utils.checkpoint.checkpoint_manager import find_latest_ckpt_path
 from verl.utils.metric import (
     reduce_metrics,
@@ -532,15 +533,15 @@ class RayPPOTrainer:
         for k, v in reward_extra_infos_dict.items():
             if len(v) == n:
                 base_data[k] = v
-        
+
         if len(data_extra_infos_list):
             required_keys = set(data_extra_infos_list[0].keys())
-            
+
             for i, entry in enumerate(data_extra_infos_list):
                 missing_keys = required_keys - set(entry.keys())
                 if missing_keys:
                     raise ValueError(f"Entry {i} is missing required keys: {missing_keys}")
-            
+
             for key in required_keys:
                 base_data[key] = [entry[key] for entry in data_extra_infos_list]
 
@@ -694,11 +695,11 @@ class RayPPOTrainer:
 
     def decode_tokens(self, token_ids, keep_special_tokens=False):
         """Decode token IDs into text, optionally keeping special tokens but always removing padding.
-        
+
         Args:
             token_ids (torch.Tensor): Token IDs to decode
             keep_special_tokens (bool): Whether to keep special tokens in the decoded text
-            
+
         Returns:
             list[str]: List of decoded texts
         """
@@ -791,6 +792,8 @@ class RayPPOTrainer:
                 worker_group=self.actor_rollout_wg,
             )
 
+        self.rolloutDatabase = RolloutDatabase(self.config.trainer.n_successful_rollouts_stored, self.config.custom_reward_function.success_threshold)
+
     def _save_checkpoint(self):
         # path: given_path + `/global_step_{global_steps}` + `/actor`
         local_global_step_folder = os.path.join(self.config.trainer.default_local_dir, f"global_step_{self.global_steps}")
@@ -822,6 +825,12 @@ class RayPPOTrainer:
         local_latest_checkpointed_iteration = os.path.join(self.config.trainer.default_local_dir, "latest_checkpointed_iteration.txt")
         with open(local_latest_checkpointed_iteration, "w") as f:
             f.write(str(self.global_steps))
+
+        # save rollout database
+        rollout_db_local_dir = os.path.join(local_global_step_folder, "rollout_db")
+        os.makedirs(rollout_db_local_dir, exist_ok=True)
+        rollout_db_local_path = os.path.join(rollout_db_local_dir, f"rollout_db_{self.global_steps}.pkl")
+        self.rolloutDatabase.save(rollout_db_local_path)
 
     def _load_checkpoint(self):
         if self.config.trainer.resume_mode == "disable":
@@ -873,6 +882,11 @@ class RayPPOTrainer:
             self.train_dataloader.load_state_dict(dataloader_state_dict)
         else:
             print(f"Warning: No dataloader state found at {dataloader_local_path}, will start from scratch")
+
+        # load rollout database
+        rollout_db_local_path = os.path.join(global_step_folder, "rollout_db", f"rollout_db_{self.global_steps}.pkl")
+        self.rolloutDatabase.load(rollout_db_local_path)
+        print(f"Loaded rollout database from {rollout_db_local_path}")
 
     def _balance_batch(self, batch: DataProto, metrics, logging_prefix="global_seqlen"):
         """Reorder the data on single controller such that each dp rank gets similar total tokens"""
@@ -1098,6 +1112,45 @@ class RayPPOTrainer:
 
                         if reward_extra_infos_dict:
                             batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
+
+                        # add to rollout database
+                        self.rolloutDatabase.add(batch)
+                        if self.config.algorithm.self_imitation_learning:
+                            with _timer("sil", timing_raw):
+                                ids_to_recompute, ids_to_keep = self.rolloutDatabase.replace_one_if_all_failed(batch)
+
+                                sil_metrics = {"sil/n_replaced_generation": len(ids_to_recompute)}
+                                metrics.update(sil_metrics)
+                                # Pad to the next multiple of 8 if needed
+                                # TODO: might failed in multi-node, need to check
+                                world_size = self.actor_rollout_wg.world_size
+                                to_add_to_recompute = (world_size - len(ids_to_recompute) % world_size) % world_size
+                                if to_add_to_recompute > 0:
+                                    ids_to_recompute.extend(ids_to_keep[:to_add_to_recompute])
+                                    ids_to_keep = ids_to_keep[to_add_to_recompute:]
+
+                                if len(ids_to_recompute):
+                                    to_recompute = batch.select_idxs(ids_to_recompute)
+
+                                    # recompute old_log_probs
+                                    with _timer("sil/old_log_prob", timing_raw):
+                                        to_recompute.batch.pop("old_log_probs")
+                                        old_log_prob = self.actor_rollout_wg.compute_log_prob(to_recompute)
+                                        old_log_prob.batch.pop("entropys")
+                                        to_recompute = to_recompute.union(old_log_prob)
+
+                                    # recompute reference log_prob
+                                    if self.use_reference_policy:
+                                        with _timer("sil/ref", timing_raw):
+                                            to_recompute.batch.pop("ref_log_prob")
+                                            ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(to_recompute)
+                                            to_recompute = to_recompute.union(ref_log_prob)
+
+                                    # copy in the original batch
+                                    for key in to_recompute.batch.keys():
+                                        batch.batch[key][ids_to_recompute] = to_recompute.batch[key]
+                                    for key in to_recompute.non_tensor_batch.keys():
+                                        batch.non_tensor_batch[key][ids_to_recompute] = to_recompute.non_tensor_batch[key]
 
                         # compute rewards. apply_kl_penalty if available
                         if self.config.algorithm.use_kl_in_reward:
