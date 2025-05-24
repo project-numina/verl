@@ -868,6 +868,7 @@ custom_reward_function:
 
   # The name of the reward function within the specified file. Default is 'compute_score'.
   name: compute_score
+  success_threshold: 0.5 # threshold to determine if the generation is success or failure
 
 # config for the algorithm
 algorithm:
@@ -885,6 +886,7 @@ algorithm:
   norm_adv_by_std_in_grpo: True
 
   # Whether to enable in-reward KL penalty
+  self_imitation_learning: False
   use_kl_in_reward: False
 
   # How to estimate KL divergence: "kl", "abs", "mse", "low_var_kl", or "full"
@@ -1045,6 +1047,8 @@ trainer:
 
   # Device to run training on (e.g., "cuda", "cpu")
   device: cuda
+  # The number of successful rollouts to store in the rollout database
+  n_successful_rollouts_stored: 10
 
   track_token_lengths: true
 
