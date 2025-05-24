@@ -876,6 +876,7 @@ custom_reward_function:
 
   # The name of the reward function within the specified file. Default is 'compute_score'.
   name: compute_score
+  success_threshold: 0.5 # threshold to determine if the generation is success or failure
 
 # config for the algorithm
 algorithm:
@@ -891,8 +892,7 @@ algorithm:
 
   # Whether to normalize advantages by std (specific to GRPO)
   norm_adv_by_std_in_grpo: True
-
-  # Whether to enable in-reward KL penalty
+  self_imitation_learning: False
   use_kl_in_reward: False
 
   # How to estimate KL divergence: "kl", "abs", "mse", "low_var_kl", or "full"
@@ -1042,6 +1042,8 @@ trainer:
 
   # Timeout (in seconds) for Ray worker to wait for registration
   ray_wait_register_center_timeout: 300
+  # The number of successful rollouts to store in the rollout database
+  n_successful_rollouts_stored: 10
 
   # Device to run training on (e.g., "cuda", "cpu")
   device: cuda
