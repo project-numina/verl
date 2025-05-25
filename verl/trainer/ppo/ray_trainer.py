@@ -1175,6 +1175,9 @@ class RayPPOTrainer:
                             multi_turn=self.config.actor_rollout_ref.rollout.multi_turn.enable,
                         )
 
+                        if self.config.algorithm.get("remove_negative_advantage", False):
+                            batch.batch["advantages"] = batch.batch["advantages"].clamp(min=0)
+
                     # update critic
                     if self.use_critic:
                         with _timer("update_critic", timing_raw):
