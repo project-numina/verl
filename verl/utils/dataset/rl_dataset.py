@@ -144,7 +144,8 @@ class RLHFDataset(Dataset):
             video_key = self.video_key
 
             if processor is not None:
-                from verl.utils.dataset.vision_utils import process_image, process_video
+                from verl.utils.dataset.vision_utils import (process_image,
+                                                             process_video)
 
                 def doc2len(doc) -> int:
                     messages = self._build_messages(doc)
@@ -215,7 +216,8 @@ class RLHFDataset(Dataset):
         model_inputs = {}
 
         if self.processor is not None:
-            from verl.utils.dataset.vision_utils import process_image, process_video
+            from verl.utils.dataset.vision_utils import (process_image,
+                                                         process_video)
 
             raw_prompt = self.processor.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
             multi_modal_data = {}
