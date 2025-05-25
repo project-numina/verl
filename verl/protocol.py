@@ -34,9 +34,9 @@ from packaging import version
 from tensordict import TensorDict
 from torch.utils.data import DataLoader
 
+from verl.utils.device import get_torch_device
 from verl.utils.py_functional import union_two_dict
 from verl.utils.torch_functional import allgather_dict_tensors
-from verl.utils.device import get_torch_device
 
 __all__ = ["DataProto", "union_tensor_dict"]
 
@@ -323,7 +323,7 @@ class DataProto:
             batch_size = self.batch.batch_size[0]
             for key, val in self.non_tensor_batch.items():
                 assert isinstance(val, np.ndarray), f"data in the non_tensor_batch must be a numpy.array with dtype=object, but for {key=}, got {type(val)=}"
-                # assert val.shape[0] == batch_size, f"key {key} length {len(val)} is not equal to batch size {batch_size}"
+                assert val.shape[0] == batch_size, f"key {key} length {len(val)} is not equal to batch size {batch_size}"
 
     @classmethod
     def from_single_dict(cls, data: Dict[str, Union[torch.Tensor, np.ndarray]], meta_info=None, auto_padding=False):
