@@ -34,9 +34,9 @@ from packaging import version
 from tensordict import TensorDict
 from torch.utils.data import DataLoader
 
+from verl.utils.device import get_torch_device
 from verl.utils.py_functional import union_two_dict
 from verl.utils.torch_functional import allgather_dict_tensors
-from verl.utils.device import get_torch_device
 
 __all__ = ["DataProto", "union_tensor_dict"]
 

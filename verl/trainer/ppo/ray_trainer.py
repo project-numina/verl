@@ -639,7 +639,7 @@ class RayPPOTrainer:
 
             # Store generated outputs
             output_ids = test_output_gen_batch.batch["responses"]
-            output_texts = self.decode_tokens(output_ids, keep_special_tokens=False)
+            output_texts = self.decode_tokens(output_ids, keep_special_tokens=True)
             sample_outputs.extend(output_texts)
 
             test_batch = test_batch.union(test_output_gen_batch)
