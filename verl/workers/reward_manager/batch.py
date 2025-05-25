@@ -20,7 +20,6 @@ from verl import DataProto
 from verl.workers.reward_manager import register
 
 
-@register("batch")
 class BatchRewardManager:
     """
     A batch reward manager that computes rewards for a batch of data.
@@ -58,12 +57,14 @@ class BatchRewardManager:
         ground_truths = [item.non_tensor_batch["reward_model"].get("ground_truth", None) for item in data]
         data_sources = data.non_tensor_batch[self.reward_fn_key]
         extras = data.non_tensor_batch.get("extra_info", [None] * len(data))
+        turns = data.non_tensor_batch.get("turn_info", [None] * len(data))
 
         scores = self.compute_score(
             data_sources=data_sources,
             solution_strs=responses_str,
             ground_truths=ground_truths,
             extra_infos=extras,
+            turn_infos=turns,
             **self.reward_kwargs,
         )
 
