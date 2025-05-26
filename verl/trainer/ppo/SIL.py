@@ -51,13 +51,10 @@ class RolloutDatabase:
             # Check if the reward is above the threshold
             if rollout_item.batch["acc"] >= self.reward_threshold:
                 item = {
-                    "position_ids": rollout_batch.batch["position_ids"][idx],
-                    "input_ids": rollout_batch.batch["input_ids"][idx],
-                    "promts": rollout_batch.batch["prompts"][idx],
                     "responses": rollout_batch.batch["responses"][idx],
                     "attention_mask": rollout_batch.batch["attention_mask"][idx],
-                    "response_mask": rollout_item.batch["acc"],
-                    "logits": rollout_batch.batch["logits"][idx],
+                    "response_mask": rollout_batch.batch["response_mask"][idx],
+                    "acc": rollout_item.batch["acc"],
                     "nt_acc": rollout_item.non_tensor_batch["acc"][idx],
                     "nt_score": rollout_item.non_tensor_batch["score"][idx],
                     "nt_pred": rollout_item.non_tensor_batch["pred"][idx],
@@ -95,12 +92,9 @@ class RolloutDatabase:
                 replacement = random.choice(list(self._buckets[prompt_idx]))
 
                 # Update the rollout_batch with the replacement
-                rollout_batch.batch["position_ids"][to_replace_idx] = replacement["position_ids"]
-                rollout_batch.batch["input_ids"][to_replace_idx] = replacement["input_ids"]
-                rollout_batch.batch["prompts"][to_replace_idx] = replacement["promts"]
                 rollout_batch.batch["responses"][to_replace_idx] = replacement["responses"]
                 rollout_batch.batch["attention_mask"][to_replace_idx] = replacement["attention_mask"]
-                rollout_batch.batch["logits"][to_replace_idx] = replacement["logits"]
+                rollout_batch.batch["response_mask"][to_replace_idx] = replacement["response_mask"]
                 rollout_batch.batch["acc"][to_replace_idx] = replacement["response_mask"]
 
                 rollout_batch.non_tensor_batch["acc"][to_replace_idx] = replacement["nt_acc"]
