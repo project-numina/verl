@@ -1116,8 +1116,8 @@ class RayPPOTrainer:
                             batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
 
                         # add to rollout database
-                        self.rolloutDatabase.add(batch)
                         if self.config.algorithm.self_imitation_learning:
+                            self.rolloutDatabase.add(batch)
                             with _timer("sil", timing_raw):
                                 ids_to_recompute, ids_to_keep = self.rolloutDatabase.replace_one_if_all_failed(batch)
 
