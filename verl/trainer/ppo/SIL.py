@@ -52,8 +52,8 @@ class RolloutDatabase:
             if rollout_item.batch["acc"] >= self.reward_threshold:
                 item = {
                     "responses": rollout_batch.batch["responses"][idx],
-                    "attention_mask": rollout_batch.batch["attention_mask"][idx],
                     "response_mask": rollout_batch.batch["response_mask"][idx],
+                    "token_level_scores": rollout_batch.batch["token_level_scores"][idx],
                     "acc": rollout_item.batch["acc"],
                     "nt_acc": rollout_item.non_tensor_batch["acc"][idx],
                     "nt_score": rollout_item.non_tensor_batch["score"][idx],
@@ -91,15 +91,15 @@ class RolloutDatabase:
                 to_replace_idx = indices[0]
                 replacement = random.choice(list(self._buckets[prompt_idx]))
 
-                # Update the rollout_batch with the replacement
+                # Only keep minimal data
                 rollout_batch.batch["responses"][to_replace_idx] = replacement["responses"]
-                rollout_batch.batch["attention_mask"][to_replace_idx] = replacement["attention_mask"]
                 rollout_batch.batch["response_mask"][to_replace_idx] = replacement["response_mask"]
-                rollout_batch.batch["acc"][to_replace_idx] = replacement["response_mask"]
+                rollout_batch.batch["acc"][to_replace_idx] = replacement["acc"]
+                rollout_batch.batch["token_level_scores"][to_replace_idx] = replacement["token_level_scores"]
 
-                rollout_batch.non_tensor_batch["acc"][to_replace_idx] = replacement["nt_acc"]
                 rollout_batch.non_tensor_batch["score"][to_replace_idx] = replacement["nt_score"]
                 rollout_batch.non_tensor_batch["pred"][to_replace_idx] = replacement["nt_pred"]
+                rollout_batch.non_tensor_batch["acc"][to_replace_idx] = replacement["nt_acc"]
 
                 ids_to_recompute.append(to_replace_idx)
                 # Keep the rest
