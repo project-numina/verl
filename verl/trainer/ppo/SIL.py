@@ -57,7 +57,6 @@ class RolloutDatabase:
                     "acc": rollout_item.batch["acc"],
                     "nt_acc": rollout_item.non_tensor_batch["acc"],
                     "nt_score": rollout_item.non_tensor_batch["score"],
-                    "nt_pred": rollout_item.non_tensor_batch["pred"],
                 }
                 self._buckets[prompt_idx].append(item)
 
@@ -98,7 +97,6 @@ class RolloutDatabase:
                 rollout_batch.batch["token_level_scores"][to_replace_idx] = replacement["token_level_scores"]
 
                 rollout_batch.non_tensor_batch["score"][to_replace_idx] = replacement["nt_score"]
-                rollout_batch.non_tensor_batch["pred"][to_replace_idx] = replacement["nt_pred"]
                 rollout_batch.non_tensor_batch["acc"][to_replace_idx] = replacement["nt_acc"]
 
                 ids_to_recompute.append(to_replace_idx)
