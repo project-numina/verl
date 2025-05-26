@@ -19,7 +19,6 @@ from collections import defaultdict, deque
 from typing import Dict
 
 from verl import DataProto
-from verl.protocol import DataProtoItem
 
 
 class RolloutDatabase:
@@ -37,7 +36,7 @@ class RolloutDatabase:
         """
         self.k = k
         self.reward_threshold = reward_threshold
-        self._buckets: Dict[str, deque[DataProtoItem]] = defaultdict(lambda: deque(maxlen=self.k))
+        self._buckets: Dict[str, dict] = defaultdict(lambda: deque(maxlen=self.k))
         pass
 
     def add(self, rollout_batch: DataProto):
@@ -51,7 +50,19 @@ class RolloutDatabase:
             prompt_idx = rollout_item.non_tensor_batch["index"]
             # Check if the reward is above the threshold
             if rollout_item.batch["acc"] >= self.reward_threshold:
-                self._buckets[prompt_idx].append(rollout_item)
+                item = {
+                    "position_ids": rollout_batch.batch["position_ids"][idx],
+                    "input_ids": rollout_batch.batch["input_ids"][idx],
+                    "promts": rollout_batch.batch["prompts"][idx],
+                    "responses": rollout_batch.batch["responses"][idx],
+                    "attention_mask": rollout_batch.batch["attention_mask"][idx],
+                    "response_mask": rollout_item.batch["acc"],
+                    "logits": rollout_batch.batch["logits"][idx],
+                    "nt_acc": rollout_item.non_tensor_batch["acc"][idx],
+                    "nt_score": rollout_item.non_tensor_batch["score"][idx],
+                    "nt_pred": rollout_item.non_tensor_batch["pred"][idx],
+                }
+                self._buckets[prompt_idx].append(item)
 
     def replace_one_if_all_failed(self, rollout_batch: DataProto):
         """
@@ -83,10 +94,18 @@ class RolloutDatabase:
                 to_replace_idx = indices[0]
                 replacement = random.choice(list(self._buckets[prompt_idx]))
 
-                for key in replacement.batch.keys():
-                    rollout_batch.batch[key][to_replace_idx] = replacement.batch[key]
-                for key in replacement.non_tensor_batch.keys():
-                    rollout_batch.non_tensor_batch[key][to_replace_idx] = replacement.non_tensor_batch[key]
+                # Update the rollout_batch with the replacement
+                rollout_batch.batch["position_ids"][to_replace_idx] = replacement["position_ids"]
+                rollout_batch.batch["input_ids"][to_replace_idx] = replacement["input_ids"]
+                rollout_batch.batch["prompts"][to_replace_idx] = replacement["promts"]
+                rollout_batch.batch["responses"][to_replace_idx] = replacement["responses"]
+                rollout_batch.batch["attention_mask"][to_replace_idx] = replacement["attention_mask"]
+                rollout_batch.batch["logits"][to_replace_idx] = replacement["logits"]
+                rollout_batch.batch["acc"][to_replace_idx] = replacement["response_mask"]
+
+                rollout_batch.non_tensor_batch["acc"][to_replace_idx] = replacement["nt_acc"]
+                rollout_batch.non_tensor_batch["score"][to_replace_idx] = replacement["nt_score"]
+                rollout_batch.non_tensor_batch["pred"][to_replace_idx] = replacement["nt_pred"]
 
                 ids_to_recompute.append(to_replace_idx)
                 # Keep the rest
