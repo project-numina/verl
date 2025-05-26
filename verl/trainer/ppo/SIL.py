@@ -51,13 +51,13 @@ class RolloutDatabase:
             # Check if the reward is above the threshold
             if rollout_item.batch["acc"] >= self.reward_threshold:
                 item = {
-                    "responses": rollout_batch.batch["responses"][idx],
-                    "response_mask": rollout_batch.batch["response_mask"][idx],
-                    "token_level_scores": rollout_batch.batch["token_level_scores"][idx],
+                    "responses": rollout_item.batch["responses"],
+                    "response_mask": rollout_item.batch["response_mask"],
+                    "token_level_scores": rollout_item.batch["token_level_scores"],
                     "acc": rollout_item.batch["acc"],
-                    "nt_acc": rollout_item.non_tensor_batch["acc"][idx],
-                    "nt_score": rollout_item.non_tensor_batch["score"][idx],
-                    "nt_pred": rollout_item.non_tensor_batch["pred"][idx],
+                    "nt_acc": rollout_item.non_tensor_batch["acc"],
+                    "nt_score": rollout_item.non_tensor_batch["score"],
+                    "nt_pred": rollout_item.non_tensor_batch["pred"],
                 }
                 self._buckets[prompt_idx].append(item)
 
