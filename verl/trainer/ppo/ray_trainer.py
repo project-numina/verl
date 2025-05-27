@@ -1175,6 +1175,17 @@ class RayPPOTrainer:
                             multi_turn=self.config.actor_rollout_ref.rollout.multi_turn.enable,
                         )
 
+                        balance_advantage = self.config.algorithm.get("balance_advantage", False)
+                        if balance_advantage:
+                            tr = self.config.algorithm.get("positive_advantage_ratio", None)
+                            if tr is None:
+                                raise ValueError("positive_advantage_ratio must be specified if balance_advantage is True")
+                            assert 0.0 < tr < 1.0, f"positive_advantage_ratio must be 0 < ratio < 1"
+                            batch.batch['advantages'] = self.balance_advantages(batch.batch['advantages'], tr)
+    
+                        if self.config.algorithm.get("remove_negative_advantage", False):
+                            batch.batch["advantages"] = batch.batch["advantages"].clamp(min=0)
+
                     # update critic
                     if self.use_critic:
                         with _timer("update_critic", timing_raw):
@@ -1245,3 +1256,36 @@ class RayPPOTrainer:
 
                 progress_bar.update(1)
                 self.global_steps += 1
+
+    def balance_advantages(self, advantages, target_positive_ratio):
+        """
+        Balance the advantages by setting some negative advantages to zero to achieve a target positive ratio.
+        
+        Args:
+            advantages (torch.Tensor): The advantages tensor
+            target_positive_ratio (float): Target ratio of positive advantages (0 < ratio < 1)
+            
+        Returns:
+            torch.Tensor: Balanced advantages tensor
+        """
+        # percentage of rows where there is at least one negative value or positive value
+        negative_rows = (advantages < 0).any(dim=-1).sum()
+        positive_rows = (advantages > 0).any(dim=-1).sum()
+
+        curr_pos_ratio = positive_rows / (positive_rows + negative_rows)
+        if curr_pos_ratio < target_positive_ratio:
+            # calculate how many negative advantages to set to zero so that the positive ratio is > tr
+            new_negative_rows = int(((1 - target_positive_ratio) * positive_rows) / target_positive_ratio)
+            n_negative_to_set_to_zero = negative_rows - new_negative_rows
+            # can be minimum 0 and maximum negative_rows
+            n_negative_to_set_to_zero = max(0, n_negative_to_set_to_zero)
+            n_negative_to_set_to_zero = min(n_negative_to_set_to_zero, negative_rows)
+            ratio = n_negative_to_set_to_zero / negative_rows
+            # find indices of rows where there is at least one negative value
+            neg_mask = (advantages < 0).any(dim=1)
+            neg_idx = torch.nonzero(neg_mask, as_tuple=False).squeeze(1)
+            sampled = neg_idx[torch.randperm(neg_idx.numel())[:n_negative_to_set_to_zero]]
+            advantages[sampled] = 0
+            print(f"[BALANCE ADVANTAGE] Setting {ratio} percentage of negative advantages to zero.")
+        
+        return advantages
