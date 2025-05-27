@@ -76,10 +76,10 @@ class RolloutDatabase:
                 to_replace_idx = indices[0]
                 replacement = random.choice(self._buckets[prompt_idx])
 
-                rollout_batch.batch["responses"][to_replace_idx] = replacement["responses"]
-                rollout_batch.batch["response_mask"][to_replace_idx] = replacement["response_mask"]
-                rollout_batch.batch["acc"][to_replace_idx] = replacement["acc"]
-                rollout_batch.batch["token_level_scores"][to_replace_idx] = replacement["token_level_scores"]
+                rollout_batch.batch["responses"][to_replace_idx] = replacement["responses"].cpu().numpy()
+                rollout_batch.batch["response_mask"][to_replace_idx] = replacement["response_mask"].cpu().numpy()
+                rollout_batch.batch["acc"][to_replace_idx] = replacement["acc"].cpu().numpy()
+                rollout_batch.batch["token_level_scores"][to_replace_idx] = replacement["token_level_scores"].cpu().numpy()
 
                 rollout_batch.non_tensor_batch["score"][to_replace_idx] = replacement["nt_score"]
                 rollout_batch.non_tensor_batch["acc"][to_replace_idx] = replacement["nt_acc"]
