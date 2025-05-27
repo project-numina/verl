@@ -35,10 +35,10 @@ class RolloutDatabase:
             prompt_idx = rollout_item.non_tensor_batch["index"]
             if rollout_item.batch["acc"] >= self.reward_threshold:
                 item = {
-                    "responses": rollout_item.batch["responses"],
-                    "response_mask": rollout_item.batch["response_mask"],
-                    "token_level_scores": rollout_item.batch["token_level_scores"],
-                    "acc": rollout_item.batch["acc"],
+                    "responses": rollout_item.batch["responses"].cpu().numpy(),
+                    "response_mask": rollout_item.batch["response_mask"].cpu().numpy(),
+                    "token_level_scores": rollout_item.batch["token_level_scores"].cpu().numpy(),
+                    "acc": rollout_item.batch["acc"].cpu().numpy(),
                     "nt_acc": rollout_item.non_tensor_batch["acc"],
                     "nt_score": rollout_item.non_tensor_batch["score"],
                 }
@@ -76,10 +76,10 @@ class RolloutDatabase:
                 to_replace_idx = indices[0]
                 replacement = random.choice(self._buckets[prompt_idx])
 
-                rollout_batch.batch["responses"][to_replace_idx] = replacement["responses"].cpu().numpy()
-                rollout_batch.batch["response_mask"][to_replace_idx] = replacement["response_mask"].cpu().numpy()
-                rollout_batch.batch["acc"][to_replace_idx] = replacement["acc"].cpu().numpy()
-                rollout_batch.batch["token_level_scores"][to_replace_idx] = replacement["token_level_scores"].cpu().numpy()
+                rollout_batch.batch["responses"][to_replace_idx] = replacement["responses"]
+                rollout_batch.batch["response_mask"][to_replace_idx] = replacement["response_mask"]
+                rollout_batch.batch["acc"][to_replace_idx] = replacement["acc"]
+                rollout_batch.batch["token_level_scores"][to_replace_idx] = replacement["token_level_scores"]
 
                 rollout_batch.non_tensor_batch["score"][to_replace_idx] = replacement["nt_score"]
                 rollout_batch.non_tensor_batch["acc"][to_replace_idx] = replacement["nt_acc"]
