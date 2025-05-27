@@ -38,9 +38,9 @@ class RolloutDatabase:
                     "batch": {},
                     "non_tensor_batch": {},
                 }
-                for key in rollout_item.batch:
+                for key in rollout_item.batch.keys():
                     item["batch"][key] = rollout_item.batch[key].cpu().numpy()
-                for key in rollout_item.non_tensor_batch:
+                for key in rollout_item.non_tensor_batch.keys():
                     item["non_tensor_batch"][key] = rollout_item.non_tensor_batch[key]
 
                 bucket = self._buckets[prompt_idx]
@@ -75,9 +75,9 @@ class RolloutDatabase:
                 to_replace_idx = indices[0]
                 replacement = random.choice(self._buckets[prompt_idx])
 
-                for key in replacement["batch"]:
+                for key in replacement["batch"].keys():
                     rollout_batch[to_replace_idx].batch[key] = replacement["batch"][key]
-                for key in replacement["non_tensor_batch"]:
+                for key in replacement["non_tensor_batch"].keys():
                     rollout_batch[to_replace_idx].non_tensor_batch[key] = replacement["non_tensor_batch"][key]
 
                 ids_to_recompute.append(to_replace_idx)
