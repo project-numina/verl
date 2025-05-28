@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import gzip
 import os
 import pickle
 import random
-from collections import defaultdict, deque
+from collections import defaultdict
 from typing import Dict
 
 from verl import DataProto
-from verl.protocol import DataProtoItem
 
 
 class RolloutDatabase:
     """
-    Stores last k successfull rollouts for every prompts.
+    Stores last k successful rollouts for every prompt.
     Can be used for replay or self-imitation learning.
     Can persist to disk and reload lazily using memory-mapped files if needed.
     """
@@ -37,21 +37,31 @@ class RolloutDatabase:
         """
         self.k = k
         self.reward_threshold = reward_threshold
-        self._buckets: Dict[str, deque[DataProtoItem]] = defaultdict(lambda: deque(maxlen=self.k))
-        pass
+        self._buckets: Dict[str, list] = defaultdict(list)
 
     def add(self, rollout_batch: DataProto):
         """
         Add a batch of rollouts to the database.
         Args:
-            batch (DataProto): Batch of rollouts to add.
+            rollout_batch (DataProto): Batch of rollouts to add.
         """
         for idx in range(len(rollout_batch)):
             rollout_item = rollout_batch[idx]
             prompt_idx = rollout_item.non_tensor_batch["index"]
-            # Check if the reward is above the threshold
             if rollout_item.batch["acc"] >= self.reward_threshold:
-                self._buckets[prompt_idx].append(rollout_item)
+                item = {
+                    "batch": {},
+                    "non_tensor_batch": {},
+                }
+                for key in rollout_item.batch.keys():
+                    item["batch"][key] = rollout_item.batch[key].cpu().numpy()
+                for key in rollout_item.non_tensor_batch.keys():
+                    item["non_tensor_batch"][key] = rollout_item.non_tensor_batch[key]
+
+                bucket = self._buckets[prompt_idx]
+                bucket.append(item)
+                if len(bucket) > self.k:
+                    bucket.pop(0)  # Remove oldest
 
     def replace_one_if_all_failed(self, rollout_batch: DataProto):
         """
@@ -67,32 +77,27 @@ class RolloutDatabase:
         """
         ids_to_recompute = []
         ids_to_keep = []
-
-        # group all rollouts by prompt index
         prompt_to_indices = defaultdict(list)
+
         for idx in range(len(rollout_batch)):
             prompt_idx = rollout_batch[idx].non_tensor_batch["index"]
             prompt_to_indices[prompt_idx].append(idx)
 
         for prompt_idx, indices in prompt_to_indices.items():
-            # Check if all responses for that prompt are below the threshold
             all_below_threshold = all(rollout_batch[i].batch["acc"] < self.reward_threshold for i in indices)
 
             if all_below_threshold and self._buckets[prompt_idx]:
-                # Replace only one of them with a successful sample
                 to_replace_idx = indices[0]
-                replacement = random.choice(list(self._buckets[prompt_idx]))
+                replacement = random.choice(self._buckets[prompt_idx])
 
-                for key in replacement.batch.keys():
-                    rollout_batch.batch[key][to_replace_idx] = replacement.batch[key]
-                for key in replacement.non_tensor_batch.keys():
-                    rollout_batch.non_tensor_batch[key][to_replace_idx] = replacement.non_tensor_batch[key]
+                for key in replacement["batch"].keys():
+                    rollout_batch[to_replace_idx].batch[key] = replacement["batch"][key]
+                for key in replacement["non_tensor_batch"].keys():
+                    rollout_batch[to_replace_idx].non_tensor_batch[key] = replacement["non_tensor_batch"][key]
 
                 ids_to_recompute.append(to_replace_idx)
-                # Keep the rest
                 ids_to_keep.extend(indices[1:])
             else:
-                # Keep all original rollouts
                 ids_to_keep.extend(indices)
 
         return ids_to_recompute, ids_to_keep
@@ -104,9 +109,8 @@ class RolloutDatabase:
         Args:
             filepath (str): Path to the file where the database should be saved.
         """
-        with open(filepath, "wb") as f:
-            serializable_buckets = {k: list(v) for k, v in self._buckets.items()}
-            pickle.dump(serializable_buckets, f)
+        with gzip.open(filepath, "wb") as f:
+            pickle.dump(self._buckets, f)
 
     def load(self, filepath: str):
         """
@@ -118,8 +122,6 @@ class RolloutDatabase:
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"No saved database found at: {filepath}")
 
-        with open(filepath, "rb") as f:
+        with gzip.open(filepath, "rb") as f:
             data = pickle.load(f)
-            self._buckets = defaultdict(lambda: deque(maxlen=self.k))
-            for k, v in data.items():
-                self._buckets[k] = deque(v, maxlen=self.k)
+            self._buckets = defaultdict(list, {k: v[: self.k] for k, v in data.items()})
