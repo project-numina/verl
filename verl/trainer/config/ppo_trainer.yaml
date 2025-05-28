@@ -1048,7 +1048,7 @@ trainer:
   # Device to run training on (e.g., "cuda", "cpu")
   device: cuda
   # The number of successful rollouts to store in the rollout database
-  n_successful_rollouts_stored: 10
+  n_successful_rollouts_stored: 3
 
   track_token_lengths: true
 
