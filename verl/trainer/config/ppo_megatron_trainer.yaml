@@ -441,7 +441,7 @@ trainer:
     capture-range-end: null
     kill: none
   # The number of successful rollouts to store in the rollout database
-  n_successful_rollouts_stored: 10
+  n_successful_rollouts_stored: 3
 
 ray_init:
   num_cpus: null # `None` means using all CPUs, which might cause hang if limited in systems like SLURM. Please set to a number allowed then.
