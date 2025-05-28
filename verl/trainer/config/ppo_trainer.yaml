@@ -191,6 +191,7 @@ reward_model:
     path: ~/models/FsfairX-LLaMA3-RM-v0.1
     external_lib: ${actor_rollout_ref.model.external_lib}
     use_remove_padding: False
+    use_fused_kernels: ${actor_rollout_ref.model.use_fused_kernels}
     trust_remote_code: False
     fsdp_config:
       wrap_policy:
@@ -259,6 +260,7 @@ trainer:
   ray_wait_register_center_timeout: 300
   # The number of successful rollouts to store in the rollout database
   n_successful_rollouts_stored: 3
+  device: cuda
 
 ray_init:
   num_cpus: null # `None` means using all CPUs, which might cause hang if limited in systems like SLURM. Please set to a number allowed then.
