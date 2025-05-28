@@ -196,27 +196,6 @@ class DataProtoItem:
     non_tensor_batch: Dict = field(default_factory=dict)
     meta_info: Dict = field(default_factory=dict)
 
-    def __getstate__(self):
-        import io
-
-        buffer = io.BytesIO()
-        if version.parse(tensordict.__version__) >= version.parse("0.5.0") and self.batch is not None:
-            self.batch = self.batch.contiguous()
-            self.batch = self.batch.consolidate()
-        torch.save(self.batch, buffer)
-        buffer_bytes = buffer.getvalue()
-        return buffer_bytes, self.non_tensor_batch, self.meta_info
-
-    def __setstate__(self, data):
-        import io
-
-        batch_deserialized_bytes, non_tensor_batch, meta_info = data
-        batch_deserialized = io.BytesIO(initial_bytes=batch_deserialized_bytes)
-        batch = torch.load(batch_deserialized, weights_only=False, map_location="cpu" if not torch.cuda.is_available() else None)
-        self.batch = batch
-        self.non_tensor_batch = non_tensor_batch
-        self.meta_info = meta_info
-
 
 @dataclass
 class DataProto:
