@@ -1,3 +1,4 @@
+import gzip
 import os
 import pickle
 import random
@@ -94,7 +95,7 @@ class RolloutDatabase:
         Args:
             filepath (str): Path to the file where the database should be saved.
         """
-        with open(filepath, "wb") as f:
+        with gzip.open(filepath, "wb") as f:
             pickle.dump(self._buckets, f)
 
     def load(self, filepath: str):
@@ -107,6 +108,6 @@ class RolloutDatabase:
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"No saved database found at: {filepath}")
 
-        with open(filepath, "rb") as f:
+        with gzip.open(filepath, "rb") as f:
             data = pickle.load(f)
             self._buckets = defaultdict(list, {k: v[: self.k] for k, v in data.items()})
