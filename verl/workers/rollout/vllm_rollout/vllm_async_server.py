@@ -247,5 +247,11 @@ class AsyncvLLMServer(AsyncServerBase):
 
     async def sleep(self):
         # TODO: https://github.com/vllm-project/vllm/issues/17103
+        import time
+        start_time = time.time()
         await self.engine.reset_prefix_cache()
+        reset_time = time.time()
         await self.engine.sleep()
+        end_time = time.time()
+        logger.info(f"Sleep mode timing - reset_prefix_cache: {reset_time - start_time:.2f}s, sleep: {end_time - reset_time:.2f}s, total: {end_time - start_time:.2f}s")
+

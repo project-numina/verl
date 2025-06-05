@@ -631,7 +631,15 @@ class RayPPOTrainer:
             else:
                 self.async_rollout_manager.wake_up()
                 test_output_gen_batch_padded = self.async_rollout_manager.generate_sequences(test_gen_batch_padded)
-                self.async_rollout_manager.sleep()
+                #if self.config.actor_rollout_ref.rollout.free_cache_engine:
+                if True:
+                    print(f"MARINA entering sleep")
+                    import time
+                    start_time = time.time()
+                    self.async_rollout_manager.sleep()
+                    end_time = time.time()
+                    print(f"MARINA Sleep mode timing - total: {end_time - start_time:.2f}s")
+
 
             # unpad
             test_output_gen_batch = unpad_dataproto(test_output_gen_batch_padded, pad_size=pad_size)
@@ -1029,7 +1037,13 @@ class RayPPOTrainer:
                         else:
                             self.async_rollout_manager.wake_up()
                             gen_batch_output = self.async_rollout_manager.generate_sequences(gen_batch)
-                            self.async_rollout_manager.sleep()
+                            if True:
+                                print(f"MARINA gen: entering sleep")
+                                import time
+                                start_time = time.time()
+                                self.async_rollout_manager.sleep()
+                                end_time = time.time()
+                                print(f"MARINA gen: Sleep mode timing - total: {end_time - start_time:.2f}s")
 
                     if self.config.algorithm.adv_estimator == AdvantageEstimator.REMAX:
                         with _timer("gen_max", timing_raw):

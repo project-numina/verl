@@ -356,6 +356,8 @@ class vLLMAsyncRollout:
 
     def init_worker(self, all_kwargs: List[Dict[str, Any]]):
         """Initialize worker engine."""
+        import time
+        start_time = time.time()
         all_kwargs[0]["rank"] = int(os.environ["RANK"])
         all_kwargs[0]["local_rank"] = 0
 
@@ -363,18 +365,30 @@ class vLLMAsyncRollout:
         self.inference_engine = WorkerWrapperBase(vllm_config=self.vllm_config)
         self.inference_engine.init_worker(all_kwargs)
 
+        end_time = time.time()
+        logger.info(f"MARINA2 init_worker timing - total: {end_time - start_time:.2f}s")
+
     def load_model(self, *args, **kwargs):
+        import time
+        start_time = time.time()
         self.inference_engine.load_model(*args, **kwargs)
 
         # inference engine is intialized now, update sharding manager
         self.sharding_manager.inference_engine = self.inference_engine
         self.sharding_manager.model_runner = self.inference_engine.worker.model_runner
 
+        end_time = time.time()
+        logger.info(f"MARINA2 load_model timing - total: {end_time - start_time:.2f}s")
+
     def sleep(self, *args, **kwargs):
         """Offload model weights and discard kv cache."""
         if self.is_sleep:
             return
+        import time
+        start_time = time.time()
         self.sharding_manager.__exit__(None, None, None)
+        end_time = time.time()
+        logger.info(f"MARINA2 Sleep mode timing - total: {end_time - start_time:.2f}s")
         self.is_sleep = True
 
     def wake_up(self, *args, **kwargs):
