@@ -514,8 +514,7 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
 
                     for n in ns:
                         # only compute finegrained @k for metrics that are accuracy, otherwise we compute onle @n_resps
-                        if "acc" in var_name:
-                            print(f"Processing metric {var_name} for data source {data_source}, with n={n}. len(var_vals)={len(var_vals)}")
+                        if "acc_" in var_name:
                             metric[f"pass@{n}"] = 1 if 1 in random.sample(var_vals, n) else 0
                         
                         if n == n_resps:
@@ -545,8 +544,6 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
         for var_name, metric2prompt_vals in var2metric2prompt_vals.items():
             for metric_name, prompt_vals in metric2prompt_vals.items():
                 if metric_name.startswith("pass@"):
-                    print(f"pass@ metric {metric_name}: len(prompt_vals)={len(prompt_vals)} sum(prompt_vals)={np.sum(prompt_vals)}")
-                    print(f"pass@ metric {metric_name}: prompt_vals={prompt_vals}")
                     data_src2var2metric2val[data_source][var_name][metric_name] = 1.0 * np.sum(prompt_vals) / len(prompt_vals)
                 elif metric_name.startswith("p99"):
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.max(prompt_vals)
