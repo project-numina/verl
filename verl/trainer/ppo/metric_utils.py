@@ -495,7 +495,9 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
 
                 metric = {}
                 n_resps = len(var_vals)
+                # TODO: move in a more general place
                 if var_name == "mean_verification_time":
+                    # mean and max are done later in aggregation
                     metric[f"mean@{n_resps}/mean"] = np.mean(var_vals)
                     metric[f"p99@{n_resps}/max"] = np.percentile(var_vals, 99)
                     metric[f"p999@{n_resps}/max"] = np.percentile(var_vals, 99.9)
