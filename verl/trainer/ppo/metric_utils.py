@@ -481,12 +481,12 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                 if var_name == "terminate_reason":
                     metric = {}
                     reasons = set(["Problem solved", "Maximum turns reached", "No tool feedback", "Tool feedback too long", "Proof couldn't be parsed previous turn"])
-                    metric["terminate_reason/solved/count"] = sum([r=="Problem solved" for r in var_vals])
-                    metric["terminate_reason/max_turns_reached/count"] = sum([r=="Maximum turns reached" for r in var_vals])
-                    metric["terminate_reason/no_tool_feedback/count"] = sum([r=="No tool feedback" for r in var_vals])
-                    metric["terminate_reason/feedback_too_long/count"] = sum([r=="Tool feedback too long" for r in var_vals])
-                    metric["terminate_reason/error_parsing/count"] = sum([r=="Proof couldn't be parsed previous turn" for r in var_vals])
-                    metric["terminate_reason/other/count"] = sum([(r not in reasons) for r in var_vals])
+                    metric["solved/count"] = sum([r=="Problem solved" for r in var_vals])
+                    metric["max_turns_reached/count"] = sum([r=="Maximum turns reached" for r in var_vals])
+                    metric["no_tool_feedback/count"] = sum([r=="No tool feedback" for r in var_vals])
+                    metric["feedback_too_long/count"] = sum([r=="Tool feedback too long" for r in var_vals])
+                    metric["error_parsing/count"] = sum([r=="Proof couldn't be parsed previous turn" for r in var_vals])
+                    metric["other/count"] = sum([(r not in reasons) for r in var_vals])
                     data_src2prompt2var2metric[data_source][prompt][var_name] = metric
 
                 if isinstance(var_vals[0], str):
@@ -496,6 +496,7 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                 n_resps = len(var_vals)
                 if var_name == "mean_verification_time":
                     metric[f"mean@{n_resps}"] = np.mean(var_vals)
+                    metric[f"p99@{n_resps}"] = np.percentile(var_vals, 99)
 
                 if n_resps > 1:
 
@@ -508,12 +509,10 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
 
                     for n in ns:
                         # only compute finegrained @k for metrics that are accuracy, otherwise we compute onle @n_resps
-                        if n != n_resps and "acc" not in var_name:
+                        if n != n_resps or "acc" not in var_name:
                             continue
                         
                         if "acc_" in var_name:
-                            [(bon_mean, bon_std)] = bootstrap_metric(data=var_vals, subset_size=n, reduce_fns=[np.max], seed=seed, n_bootstrap=1000)
-                            metric[f"best@{n}/mean"], metric[f"best@{n}/std"] = bon_mean, bon_std
                             metric[f"pass@{n}"] = 1 if 1 in var_vals else 0
                         elif var_name in ["score", "turn"]:
                             if var2vals.get("pred", None) is not None:
@@ -525,13 +524,6 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                                     seed=seed,
                                 )
                                 metric[f"maj@{n}/mean"], metric[f"maj@{n}/std"] = maj_n_mean, maj_n_std
-                        elif var_name == "max_turns":
-                            [(bon_mean, bon_std)] = bootstrap_metric(data=var_vals, subset_size=n, reduce_fns=[np.max], seed=seed, n_bootstrap=1000)
-                            metric[f"best@{n}/mean"], metric[f"best@{n}/std"] = bon_mean, bon_std
-                        elif var_name == "mean_verification_time":
-                            [(bon_mean, bon_std), (won_mean, won_std)] = bootstrap_metric(data=var_vals, subset_size=n, reduce_fns=[np.max, np.min], seed=seed, n_bootstrap=1000)
-                            metric[f"best@{n}/mean"], metric[f"best@{n}/std"] = bon_mean, bon_std
-                            metric[f"worst@{n}/mean"], metric[f"worst@{n}/std"] = won_mean, won_std
 
                 data_src2prompt2var2metric[data_source][prompt][var_name] = metric
 
