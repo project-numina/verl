@@ -736,6 +736,7 @@ class RayPPOTrainer:
         data_sources = np.concatenate(data_source_lst, axis=0)
 
         data_src2var2metric2val = process_numina_validation_metrics(data_sources, sample_inputs, reward_extra_infos_dict)
+<<<<<<< HEAD
 
         def to_int_with_default(s: str, default: int = 0) -> int:
             try:
@@ -746,6 +747,12 @@ class RayPPOTrainer:
         metric_dict = {}
         for data_source, var2metric2val in data_src2var2metric2val.items():
             core_var = "acc"
+=======
+        print(f"data_src2var2metric2val: {data_src2var2metric2val}")
+        metric_dict = {}
+        for data_source, var2metric2val in data_src2var2metric2val.items():
+            core_var = "pass" if "pass" in var2metric2val else "reward"
+>>>>>>> ae69c98 (fixes and debug prints)
             for var_name, metric2val in var2metric2val.items():
                 n_max = max([to_int_with_default(name.split("@")[-1].split("/")[0]) for name in metric2val.keys()])
                 for metric_name, metric_val in metric2val.items():
