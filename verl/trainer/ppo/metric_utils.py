@@ -505,8 +505,6 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
         for var_name, metric2prompt_vals in var2metric2prompt_vals.items():
             for metric_name, prompt_vals in metric2prompt_vals.items():
                 if metric_name.startswith("pass@"):
-                    print(f"pass@ metric {metric_name}: len(prompt_vals)={len(prompt_vals)} sum(prompt_vals)={np.sum(prompt_vals)}")
-                    print(f"pass@ metric {metric_name}: prompt_vals={prompt_vals}")
                     data_src2var2metric2val[data_source][var_name][metric_name] = 1.0 * np.sum(prompt_vals) / len(prompt_vals)
                 elif metric_name.startswith("p99"):
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.max(prompt_vals)
