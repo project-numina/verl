@@ -478,6 +478,7 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
         for prompt, var2vals in prompt2var2vals.items():
             for var_name, var_vals in var2vals.items():
 
+                #TODO: move this metric to a more general place
                 if var_name == "terminate_reason":
                     metric = {}
                     reasons = set(["Problem solved", "Maximum turns reached", "No tool feedback", "Tool feedback too long", "Proof couldn't be parsed previous turn"])
