@@ -479,6 +479,7 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
             for var_name, var_vals in var2vals.items():
 
                 if var_name == "terminate_reason":
+                    metric = {}
                     reasons = set(["Problem solved", "Maximum turns reached", "No tool feedback", "Tool feedback too long", "Proof couldn't be parsed previous turn"])
                     metric["terminate_reason/solved/count"] = sum([r=="Problem solved" for r in var_vals])
                     metric["terminate_reason/max_turns_reached/count"] = sum([r=="Maximum turns reached" for r in var_vals])
@@ -486,6 +487,7 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                     metric["terminate_reason/feedback_too_long/count"] = sum([r=="Tool feedback too long" for r in var_vals])
                     metric["terminate_reason/error_parsing/count"] = sum([r=="Proof couldn't be parsed previous turn" for r in var_vals])
                     metric["terminate_reason/other/count"] = sum([(r not in reasons) for r in var_vals])
+                    data_src2prompt2var2metric[data_source][prompt][var_name] = metric
 
                 if isinstance(var_vals[0], str):
                     continue
@@ -546,8 +548,9 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
         for var_name, metric2prompt_vals in var2metric2prompt_vals.items():
             for metric_name, prompt_vals in metric2prompt_vals.items():
                 if metric_name.startswith("pass@"):
-                    # For pass@N, we take the mean of the pass counts
                     data_src2var2metric2val[data_source][var_name][metric_name] = 1.0 * np.sum(prompt_vals) / len(prompt_vals)
+                elif var_name.startswith("terminate_reason"):
+                    data_src2var2metric2val[data_source][var_name][metric_name] = np.sum(prompt_vals)
                 else:
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
 
