@@ -496,8 +496,9 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                 metric = {}
                 n_resps = len(var_vals)
                 if var_name == "mean_verification_time":
-                    metric[f"mean@{n_resps}"] = np.mean(var_vals)
-                    metric[f"p99@{n_resps}"] = np.percentile(var_vals, 99)
+                    metric[f"mean@{n_resps}/mean"] = np.mean(var_vals)
+                    metric[f"p99@{n_resps}/max"] = np.percentile(var_vals, 99)
+                    metric[f"p999@{n_resps}/max"] = np.percentile(var_vals, 99.9)
 
                 if n_resps > 1:
 
@@ -542,6 +543,8 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
             for metric_name, prompt_vals in metric2prompt_vals.items():
                 if metric_name.startswith("pass@"):
                     data_src2var2metric2val[data_source][var_name][metric_name] = 1.0 * np.sum(prompt_vals) / len(prompt_vals)
+                elif metric_name.startswith("p99"):
+                    data_src2var2metric2val[data_source][var_name][metric_name] = np.max(prompt_vals)
                 elif var_name.startswith("terminate_reason"):
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.sum(prompt_vals)
                 else:
