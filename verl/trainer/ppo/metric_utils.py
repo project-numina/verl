@@ -514,21 +514,21 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
 
                     for n in ns:
                         # only compute finegrained @k for metrics that are accuracy, otherwise we compute onle @n_resps
-                        if n != n_resps:
+                        if "acc" in var_name:
                             print(f"Processing metric {var_name} for data source {data_source}, with n={n}. len(var_vals)={len(var_vals)}")
                             metric[f"pass@{n}"] = 1 if 1 in random.sample(var_vals, n) else 0
-                            continue
                         
-                        if var_name in ["score", "turn"]:
-                            if var2vals.get("pred", None) is not None:
-                                vote_data = [{"val": val, "pred": pred} for val, pred in zip(var_vals, var2vals["pred"])]
-                                [(maj_n_mean, maj_n_std)] = bootstrap_metric(
-                                    data=vote_data,
-                                    subset_size=n,
-                                    reduce_fns=[partial(calc_maj_val, vote_key="pred", val_key="val")],
-                                    seed=seed,
-                                )
-                                metric[f"maj@{n}/mean"], metric[f"maj@{n}/std"] = maj_n_mean, maj_n_std
+                        if n == n_resps:
+                            if var_name in ["score", "turn"]:
+                                if var2vals.get("pred", None) is not None:
+                                    vote_data = [{"val": val, "pred": pred} for val, pred in zip(var_vals, var2vals["pred"])]
+                                    [(maj_n_mean, maj_n_std)] = bootstrap_metric(
+                                        data=vote_data,
+                                        subset_size=n,
+                                        reduce_fns=[partial(calc_maj_val, vote_key="pred", val_key="val")],
+                                        seed=seed,
+                                    )
+                                    metric[f"maj@{n}/mean"], metric[f"maj@{n}/std"] = maj_n_mean, maj_n_std
 
                 data_src2prompt2var2metric[data_source][prompt][var_name] = metric
 
