@@ -510,7 +510,9 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                             continue
                         
                         if "acc_" in var_name:
+                            [(bon_mean, bon_std)] = bootstrap_metric(data=var_vals, subset_size=n, reduce_fns=[np.max], seed=seed, n_bootstrap=1000)
                             metric[f"best@{n}/mean"], metric[f"best@{n}/std"] = bon_mean, bon_std
+                            metric[f"pass@{n}"] = 1 if 1 in var_vals else 0
                         elif var_name in ["score", "turn"]:
                             if var2vals.get("pred", None) is not None:
                                 vote_data = [{"val": val, "pred": pred} for val, pred in zip(var_vals, var2vals["pred"])]
@@ -522,9 +524,10 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                                 )
                                 metric[f"maj@{n}/mean"], metric[f"maj@{n}/std"] = maj_n_mean, maj_n_std
                         elif var_name == "max_turns":
-                            [(bon_mean, bon_std), (won_mean, won_std)] = bootstrap_metric(data=var_vals, subset_size=n, reduce_fns=[np.max, np.min], seed=seed, n_bootstrap=1000)
+                            [(bon_mean, bon_std)] = bootstrap_metric(data=var_vals, subset_size=n, reduce_fns=[np.max], seed=seed, n_bootstrap=1000)
                             metric[f"best@{n}/mean"], metric[f"best@{n}/std"] = bon_mean, bon_std
                         elif var_name == "mean_verification_time":
+                            [(bon_mean, bon_std), (won_mean, won_std)] = bootstrap_metric(data=var_vals, subset_size=n, reduce_fns=[np.max, np.min], seed=seed, n_bootstrap=1000)
                             metric[f"best@{n}/mean"], metric[f"best@{n}/std"] = bon_mean, bon_std
                             metric[f"worst@{n}/mean"], metric[f"worst@{n}/std"] = won_mean, won_std
 
@@ -542,6 +545,10 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
     for data_source, var2metric2prompt_vals in data_src2var2metric2prompt_vals.items():
         for var_name, metric2prompt_vals in var2metric2prompt_vals.items():
             for metric_name, prompt_vals in metric2prompt_vals.items():
-                data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
+                if metric_name.startswith("pass@"):
+                    # For pass@N, we take the mean of the pass counts
+                    data_src2var2metric2val[data_source][var_name][metric_name] = 1.0 * np.sum(prompt_vals) / len(prompt_vals)
+                else:
+                    data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
 
     return data_src2var2metric2val
