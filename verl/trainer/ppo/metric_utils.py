@@ -480,7 +480,7 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
             for var_name, var_vals in var2vals.items():
 
                 if var_name == "terminate_reason":
-                    reasons = set("Problem solved", "Maximum turns reached", "No tool feedback", "Tool feedback too long", "Proof couldn't be parsed previous turn")
+                    reasons = set(["Problem solved", "Maximum turns reached", "No tool feedback", "Tool feedback too long", "Proof couldn't be parsed previous turn"])
                     metric["terminate_reason/solved/count"] = sum([r=="Problem solved" for r in var_vals])
                     metric["terminate_reason/max_turns_reached/count"] = sum([r=="Maximum turns reached" for r in var_vals])
                     metric["terminate_reason/no_tool_feedback/count"] = sum([r=="No tool feedback" for r in var_vals])
@@ -490,8 +490,6 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
 
                 if isinstance(var_vals[0], str):
                     continue
-
-
 
                 metric = {}
                 n_resps = len(var_vals)
@@ -511,8 +509,6 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                         # only compute finegrained @k for metrics that are accuracy, otherwise we compute onle @n_resps
                         if n != n_resps and "acc" not in var_name:
                             continue
-
-                        [(bon_mean, bon_std), (won_mean, won_std)] = bootstrap_metric(data=var_vals, subset_size=n, reduce_fns=[np.max, np.min], seed=seed, n_bootstrap=1000)
                         
                         if "acc_" in var_name:
                             metric[f"best@{n}/mean"], metric[f"best@{n}/std"] = bon_mean, bon_std
@@ -527,6 +523,7 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                                 )
                                 metric[f"maj@{n}/mean"], metric[f"maj@{n}/std"] = maj_n_mean, maj_n_std
                         elif var_name == "max_turns":
+                            [(bon_mean, bon_std), (won_mean, won_std)] = bootstrap_metric(data=var_vals, subset_size=n, reduce_fns=[np.max, np.min], seed=seed, n_bootstrap=1000)
                             metric[f"best@{n}/mean"], metric[f"best@{n}/std"] = bon_mean, bon_std
                         elif var_name == "mean_verification_time":
                             metric[f"best@{n}/mean"], metric[f"best@{n}/std"] = bon_mean, bon_std
