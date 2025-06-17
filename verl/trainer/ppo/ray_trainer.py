@@ -746,11 +746,11 @@ class RayPPOTrainer:
             
         metric_dict = {}
         for data_source, var2metric2val in data_src2var2metric2val.items():
-            core_var = "pass" if "pass" in var2metric2val else "reward"
+            core_var = "acc" if "acc" in var2metric2val else "reward"
             for var_name, metric2val in var2metric2val.items():
                 n_max = max([to_int_with_default(name.split("@")[-1].split("/")[0]) for name in metric2val.keys()])
                 for metric_name, metric_val in metric2val.items():
-                    if (var_name == core_var) and any(metric_name.startswith(pfx) for pfx in ["pass"]) and (f"@{n_max}" in metric_name):
+                    if (core_var in var_name) and any(metric_name.startswith(pfx) for pfx in ["pass"]) and (f"@{n_max}" in metric_name):
                         metric_sec = "val-core"
                     else:
                         metric_sec = "val-aux"
