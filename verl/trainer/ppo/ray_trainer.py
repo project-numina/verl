@@ -50,6 +50,7 @@ from verl.trainer.ppo.metric_utils import (
     compute_throughout_metrics,
     compute_timing_metrics,
     process_validation_metrics,
+    process_numina_validation_metrics
 )
 from verl.trainer.ppo.reward import compute_reward, compute_reward_async
 from verl.trainer.ppo.SIL import RolloutDatabase
@@ -735,7 +736,7 @@ class RayPPOTrainer:
 
         data_sources = np.concatenate(data_source_lst, axis=0)
 
-        data_src2var2metric2val = process_validation_metrics(data_sources, sample_inputs, reward_extra_infos_dict)
+        data_src2var2metric2val = process_numina_validation_metrics(data_sources, sample_inputs, reward_extra_infos_dict)
         metric_dict = {}
         for data_source, var2metric2val in data_src2var2metric2val.items():
             core_var = "acc" if "acc" in var2metric2val else "reward"
