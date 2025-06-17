@@ -749,6 +749,13 @@ class RayPPOTrainer:
             core_var = "acc"
 =======
         print(f"data_src2var2metric2val: {data_src2var2metric2val}")
+
+        def to_int_with_default(s: str, default: int = 0) -> int:
+            try:
+                return int(s)
+            except (ValueError, TypeError):
+                return default
+            
         metric_dict = {}
         for data_source, var2metric2val in data_src2var2metric2val.items():
             core_var = "pass" if "pass" in var2metric2val else "reward"
