@@ -18,6 +18,7 @@ Metrics related to the PPO trainer.
 from collections import defaultdict
 from functools import partial
 from typing import Any, Callable, Dict, List
+import random
 
 import numpy as np
 import torch
@@ -513,12 +514,12 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
 
                     for n in ns:
                         # only compute finegrained @k for metrics that are accuracy, otherwise we compute onle @n_resps
-                        if n != n_resps or "acc" not in var_name:
+                        if n != n_resps:
+                            print(f"Processing metric {var_name} for data source {data_source}, with n={n}. len(var_vals)={len(var_vals)}")
+                            metric[f"pass@{n}"] = 1 if 1 in random.sample(var_vals, n) else 0
                             continue
                         
-                        if "acc_" in var_name:
-                            metric[f"pass@{n}"] = 1 if 1 in var_vals else 0
-                        elif var_name in ["score", "turn"]:
+                        if var_name in ["score", "turn"]:
                             if var2vals.get("pred", None) is not None:
                                 vote_data = [{"val": val, "pred": pred} for val, pred in zip(var_vals, var2vals["pred"])]
                                 [(maj_n_mean, maj_n_std)] = bootstrap_metric(
