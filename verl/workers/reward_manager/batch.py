@@ -71,6 +71,7 @@ class BatchRewardManager:
         reward_extra_info = defaultdict(list)
         prompt_ids = data.batch["prompts"]
         prompt_len = prompt_ids.shape[-1]
+        print(f"Prompt length: {prompt_len}")
         attention_mask = data.batch["attention_mask"]
         valid_response_lengths = attention_mask[:, prompt_len:].sum(dim=-1)
         data_sources = data.non_tensor_batch[self.reward_fn_key]
@@ -82,6 +83,7 @@ class BatchRewardManager:
         for i in range(len(data)):
             print(f"Processing sample {i}/{len(data)}...")
             length = valid_response_lengths[i].item()
+            print(f"length: {length}")
             score = scores[i]
 
             if isinstance(score, dict):
