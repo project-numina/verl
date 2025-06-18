@@ -736,7 +736,6 @@ class RayPPOTrainer:
         data_sources = np.concatenate(data_source_lst, axis=0)
 
         data_src2var2metric2val = process_numina_validation_metrics(data_sources, sample_inputs, reward_extra_infos_dict)
-        print(f"data_src2var2metric2val: {data_src2var2metric2val}")
 
         def to_int_with_default(s: str, default: int = 0) -> int:
             try:
