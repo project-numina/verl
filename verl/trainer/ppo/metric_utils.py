@@ -422,50 +422,9 @@ def process_validation_metrics(data_sources: list[str], sample_inputs: list[str]
         for var_name, metric2prompt_vals in var2metric2prompt_vals.items():
             for metric_name, prompt_vals in metric2prompt_vals.items():
                 data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
-
     return data_src2var2metric2val
 
 def process_numina_validation_metrics(data_sources: list[str], sample_inputs: list[str], infos_dict: dict[str, list[Any]], seed: int = 42) -> dict[str, dict[str, dict[str, float]]]:
-    """
-    Process validation metrics into a structured format with statistical analysis.
-    
-    This function is custom for numina specific metrics.
-    
-    Args:
-        data_sources: List of data source identifiers for each sample.
-        sample_inputs: List of input prompts corresponding to each sample.
-        infos_dict: Dictionary mapping variable names to lists of values for each sample.
-        seed: Random seed for bootstrap sampling. Defaults to 42.
-
-    Returns:
-        A nested dictionary with the structure:
-        {
-            data_source: {
-                variable_name: {
-                    metric_name: value
-                }
-            }
-        }
-        
-        Where metric_name includes:
-        - "mean@N": Mean value across N samples
-        - "std@N": Standard deviation across N samples
-        - "sum@N": Sum of values across N samples
-        - "best@N/mean": Mean of the best values in bootstrap samples of size N
-        - "best@N/std": Standard deviation of the best values in bootstrap samples
-        - "worst@N/mean": Mean of the worst values in bootstrap samples
-        - "worst@N/std": Standard deviation of the worst values in bootstrap samples
-        - "maj@N/mean": Mean of majority voting results in bootstrap samples (if "pred" exists)
-        - "maj@N/std": Standard deviation of majority voting results (if "pred" exists)
-        
-    Example:
-        >>> data_sources = ["source1", "source1", "source2"]
-        >>> sample_inputs = ["prompt1", "prompt1", "prompt2"]
-        >>> infos_dict = {"score": [0.8, 0.9, 0.7], "pred": ["A", "A", "B"]}
-        >>> result = process_validation_metrics(data_sources, sample_inputs, infos_dict)
-        >>> # result will contain statistics for each data source and variable
-    """
-    # Group metrics by data source, prompt and variable
     data_src2prompt2var2vals = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for sample_idx, data_source in enumerate(data_sources):
         prompt = sample_inputs[sample_idx]
@@ -551,5 +510,4 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.sum(prompt_vals)
                 else:
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
-
     return data_src2var2metric2val
