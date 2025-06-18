@@ -746,7 +746,7 @@ class RayPPOTrainer:
             
         metric_dict = {}
         for data_source, var2metric2val in data_src2var2metric2val.items():
-            core_var = "acc" if "acc" in var2metric2val else "reward"
+            core_var = "acc"
             for var_name, metric2val in var2metric2val.items():
                 n_max = max([to_int_with_default(name.split("@")[-1].split("/")[0]) for name in metric2val.keys()])
                 for metric_name, metric_val in metric2val.items():
