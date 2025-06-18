@@ -66,6 +66,7 @@ class BatchRewardManager:
             else:
                 return data.batch["rm_scores"]
 
+        print(f"Computing rewards for {len(data)} samples...")
         reward_tensor = torch.zeros_like(data.batch["responses"], dtype=torch.float32)
         reward_extra_info = defaultdict(list)
         prompt_ids = data.batch["prompts"]
@@ -79,6 +80,7 @@ class BatchRewardManager:
         already_printed = {}
 
         for i in range(len(data)):
+            print(f"Processing sample {i}/{len(data)}...")
             length = valid_response_lengths[i].item()
             score = scores[i]
 
