@@ -405,8 +405,7 @@ def process_validation_metrics(data_sources: list[str], sample_inputs: list[str]
                                 reduce_fns=[partial(calc_maj_val, vote_key="pred", val_key="val")],
                                 seed=seed,
                             )
-                            metric[f"maj@{n}/mean"], metric[f"maj@{n}/std"] = maj_n_mean, maj_n_std
-                        
+                            metric[f"maj@{n}/mean"], metric[f"maj@{n}/std"] = maj_n_mean, maj_n_std                   
                 data_src2prompt2var2metric[data_source][prompt][var_name] = metric
 
     # Aggregate metrics across prompts
@@ -422,6 +421,7 @@ def process_validation_metrics(data_sources: list[str], sample_inputs: list[str]
         for var_name, metric2prompt_vals in var2metric2prompt_vals.items():
             for metric_name, prompt_vals in metric2prompt_vals.items():
                 data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
+    
     return data_src2var2metric2val
 
 def process_numina_validation_metrics(data_sources: list[str], sample_inputs: list[str], infos_dict: dict[str, list[Any]], seed: int = 42) -> dict[str, dict[str, dict[str, float]]]:
@@ -510,4 +510,5 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.sum(prompt_vals)
                 else:
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
+    
     return data_src2var2metric2val
