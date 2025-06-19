@@ -860,6 +860,7 @@ class RayPPOTrainer:
             self.async_rollout_manager = AsyncLLMServerManager(
                 config=self.config.actor_rollout_ref,
                 worker_group=self.actor_rollout_wg,
+                scheduler_kwargs={"max_cache_size": 100_000},
             )
 
         self.rolloutDatabase = RolloutDatabase(self.config.trainer.n_successful_rollouts_stored, self.config.custom_reward_function.success_threshold)
