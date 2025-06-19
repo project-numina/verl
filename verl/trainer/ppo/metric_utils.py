@@ -18,6 +18,7 @@ Metrics related to the PPO trainer.
 from collections import defaultdict
 from functools import partial
 from typing import Any, Callable, Dict, List
+import random
 
 import numpy as np
 import torch
@@ -422,5 +423,93 @@ def process_validation_metrics(data_sources: list[str], sample_inputs: list[str]
         for var_name, metric2prompt_vals in var2metric2prompt_vals.items():
             for metric_name, prompt_vals in metric2prompt_vals.items():
                 data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
+    return data_src2var2metric2val
 
+def process_numina_validation_metrics(data_sources: list[str], sample_inputs: list[str], infos_dict: dict[str, list[Any]], seed: int = 42) -> dict[str, dict[str, dict[str, float]]]:
+    data_src2prompt2var2vals = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    for sample_idx, data_source in enumerate(data_sources):
+        prompt = sample_inputs[sample_idx]
+        var2vals = data_src2prompt2var2vals[data_source][prompt]
+        for var_name, var_vals in infos_dict.items():
+            var2vals[var_name].append(var_vals[sample_idx])
+
+    # Calculate metrics for each group
+    data_src2prompt2var2metric = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
+    for data_source, prompt2var2vals in data_src2prompt2var2vals.items():
+        for prompt, var2vals in prompt2var2vals.items():
+            for var_name, var_vals in var2vals.items():
+
+                #TODO: move this metric to a more general place
+                if var_name == "terminate_reason":
+                    metric = {}
+                    reasons = set(["Problem solved", "Maximum turns reached", "No tool feedback", "Tool feedback too long", "Proof couldn't be parsed previous turn"])
+                    metric["solved/count"] = sum([r=="Problem solved" for r in var_vals])
+                    metric["max_turns_reached/count"] = sum([r=="Maximum turns reached" for r in var_vals])
+                    metric["no_tool_feedback/count"] = sum([r=="No tool feedback" for r in var_vals])
+                    metric["feedback_too_long/count"] = sum([r=="Tool feedback too long" for r in var_vals])
+                    metric["error_parsing/count"] = sum([r=="Proof couldn't be parsed previous turn" for r in var_vals])
+                    metric["other/count"] = sum([(r not in reasons) for r in var_vals])
+                    data_src2prompt2var2metric[data_source][prompt][var_name] = metric
+
+                if isinstance(var_vals[0], str):
+                    continue
+
+                metric = {}
+                n_resps = len(var_vals)
+                # TODO: move in a more general place
+                if var_name == "mean_verification_time":
+                    # mean and max are done later in aggregation
+                    metric[f"mean@{n_resps}/mean"] = np.mean(var_vals)
+                    metric[f"p99@{n_resps}/max"] = np.percentile(var_vals, 99)
+                    metric[f"p999@{n_resps}/max"] = np.percentile(var_vals, 99.9)
+
+                if n_resps > 1:
+
+                    ns = []
+                    n = 8
+                    while n < n_resps:
+                        ns.append(n)
+                        n *= 2
+                    ns.append(n_resps)
+
+                    for n in ns:
+                        # only compute finegrained @k for metrics that are accuracy, otherwise we compute onle @n_resps
+                        if "acc_" in var_name:
+                            metric[f"pass@{n}"] = 1 if 1 in random.sample(var_vals, n) else 0
+                        
+                        if n == n_resps:
+                            if var_name in ["score", "turn"]:
+                                if var2vals.get("pred", None) is not None:
+                                    vote_data = [{"val": val, "pred": pred} for val, pred in zip(var_vals, var2vals["pred"])]
+                                    [(maj_n_mean, maj_n_std)] = bootstrap_metric(
+                                        data=vote_data,
+                                        subset_size=n,
+                                        reduce_fns=[partial(calc_maj_val, vote_key="pred", val_key="val")],
+                                        seed=seed,
+                                    )
+                                    metric[f"maj@{n}/mean"], metric[f"maj@{n}/std"] = maj_n_mean, maj_n_std
+
+                data_src2prompt2var2metric[data_source][prompt][var_name] = metric
+
+    # Aggregate metrics across prompts
+    data_src2var2metric2prompt_vals = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    for data_source, prompt2var2metric in data_src2prompt2var2metric.items():
+        for prompt, var2metric in prompt2var2metric.items():
+            for var_name, metric in var2metric.items():
+                for metric_name, metric_val in metric.items():
+                    data_src2var2metric2prompt_vals[data_source][var_name][metric_name].append(metric_val)
+
+    data_src2var2metric2val = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+    for data_source, var2metric2prompt_vals in data_src2var2metric2prompt_vals.items():
+        for var_name, metric2prompt_vals in var2metric2prompt_vals.items():
+            for metric_name, prompt_vals in metric2prompt_vals.items():
+                if metric_name.startswith("pass@"):
+                    data_src2var2metric2val[data_source][var_name][metric_name] = 1.0 * np.sum(prompt_vals) / len(prompt_vals)
+                elif metric_name.startswith("p99"):
+                    data_src2var2metric2val[data_source][var_name][metric_name] = np.max(prompt_vals)
+                elif var_name.startswith("terminate_reason"):
+                    data_src2var2metric2val[data_source][var_name][metric_name] = np.sum(prompt_vals)
+                else:
+                    data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
+    
     return data_src2var2metric2val
