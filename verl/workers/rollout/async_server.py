@@ -123,7 +123,7 @@ class ChatCompletionScheduler:
         self.config = config
         self.model_name = "/".join(model_path.split("/")[-2:])
         local_path = copy_to_local(model_path)
-        self.tokenizer = hf_tokenizer(local_path, trust_remote_code=True, use_fast=True)
+        self.tokenizer = hf_tokenizer(local_path, trust_remote_code=True)
 
         # Least requests load balancing
         self.weighted_addresses = [[0, address] for address in server_addresses]
