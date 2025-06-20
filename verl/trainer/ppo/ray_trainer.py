@@ -980,6 +980,9 @@ class RayPPOTrainer:
             self.async_rollout_manager = AgentLoopManager(
                 config=self.config,
                 worker_group=self.actor_rollout_wg,
+                scheduler_kwargs={
+                    "max_cache_size": self.config.actor_rollout_ref.rollout.get("max_cache_size", 10_000)
+                    },
             )
 
         self.rolloutDatabase = RolloutDatabase(self.config.trainer.n_successful_rollouts_stored, self.config.custom_reward_function.success_threshold)
