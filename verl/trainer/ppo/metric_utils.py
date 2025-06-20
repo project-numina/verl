@@ -510,5 +510,5 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.sum(prompt_vals)
                 else:
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
-
+    
     return data_src2var2metric2val
