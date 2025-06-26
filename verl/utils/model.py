@@ -313,9 +313,13 @@ def _load_hf_model(config, model_config, is_value_model, local_cache_path):
             state_dict["model.embed_tokens.weight"] = state_dict["model.embed_tokens.weight"][:32000]  # workaround, 32001 -> 32000
             is_value_model = True
         else:
+            print(f"load model from {local_model_path}...")
+            import transformers
+            print(transformers.__version__)
             model = AutoModelForCausalLM.from_pretrained(
                 local_model_path,
                 torch_dtype="auto",
+                trust_remote_code=True,
                 # device_map="auto", # disable auto device_map, the HF weight is only loaded to CPU in src_rank
                 # low_cpu_mem_usage=True
             )
