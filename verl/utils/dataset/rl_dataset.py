@@ -19,6 +19,7 @@ import logging
 import os
 import re
 from collections import defaultdict
+from functools import partial
 from typing import List, Optional, Union
 
 import datasets
@@ -64,6 +65,8 @@ def collate_fn(data_list: list[dict]) -> dict:
 
     return {**tensors, **non_tensors}
 
+def filter_prompt(doc, tokenizer, prompt_key, max_prompt_length):
+    return len(tokenizer.apply_chat_template(doc[prompt_key], add_generation_prompt=True, tokenize=True)) < max_prompt_length
 
 class RLHFDataset(Dataset):
     """
@@ -96,7 +99,6 @@ class RLHFDataset(Dataset):
         self.original_data_files = copy.deepcopy(data_files)  # use for resume
         self.tokenizer = tokenizer
         self.processor = processor
-        self.config = config
 
         self.cache_dir = os.path.expanduser(config.get("cache_dir", "~/.cache/verl/rlhf"))
         self.prompt_key = config.get("prompt_key", "prompt")
@@ -134,17 +136,32 @@ class RLHFDataset(Dataset):
 
         print(f"dataset len: {len(self.dataframe)}")
 
-        # filter out too long prompts
         if self.filter_overlong_prompts:
-            tokenizer = self.tokenizer
-            prompt_key = self.prompt_key
+            filter_fn = partial(
+                filter_prompt,
+                tokenizer=self.tokenizer,
+                prompt_key=self.prompt_key,
+                max_prompt_length=self.max_prompt_length,
+            )
+            
             self.dataframe = self.dataframe.filter(
-                lambda doc: len(tokenizer.apply_chat_template(doc[prompt_key], add_generation_prompt=True, tokenize=True)) < self.max_prompt_length,
+                filter_fn,
                 num_proc=self.num_workers,
                 desc=f"Filtering prompts longer than {self.max_prompt_length} tokens",
             )
-
             print(f"filter dataset len: {len(self.dataframe)}")
+
+        # # filter out too long prompts
+        # if self.filter_overlong_prompts:
+        #     tokenizer = self.tokenizer
+        #     prompt_key = self.prompt_key
+        #     self.dataframe = self.dataframe.filter(
+        #         lambda doc: len(tokenizer.apply_chat_template(doc[prompt_key], add_generation_prompt=True, tokenize=True)) < self.max_prompt_length,
+        #         num_proc=self.num_workers,
+        #         desc=f"Filtering prompts longer than {self.max_prompt_length} tokens",
+        #     )
+
+        #     print(f"filter dataset len: {len(self.dataframe)}")
 
     def resume_dataset_state(self):
         self.serialize_dataset = not hasattr(self, "original_data_files")
