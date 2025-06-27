@@ -276,8 +276,8 @@ class MegatronVLLMShardingManager(BaseShardingManager):
         transformer_config,
         layer_name_mapping,
         weight_converter: McoreToHFWeightConverterBase,
-        module: AllGatherPPModel = None,
         device_mesh,
+        module: AllGatherPPModel = None,
         offload_param: bool = True,
     ):
         from megatron.core import parallel_state as mpu
