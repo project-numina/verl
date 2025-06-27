@@ -33,9 +33,12 @@ from verl.models.mcore.weight_converter import McoreToHFWeightConverterBase
 from verl.protocol import all_gather_data_proto
 from verl.third_party.vllm import LLM, vllm_version
 from verl.third_party.vllm import parallel_state as vllm_ps
-from verl.utils.debug import GPUMemoryLogger
+from verl.utils.debug import GPUMemoryLogger, log_gpu_memory_usage
+from verl.utils.device import get_torch_device
 from verl.utils.megatron_utils import (
     get_model,
+    load_megatron_model_to_gpu,
+    offload_megatron_model_to_cpu,
     per_tensor_generator,
     unwrap_model,
 )
@@ -274,11 +277,23 @@ class MegatronVLLMShardingManager(BaseShardingManager):
         layer_name_mapping,
         weight_converter: McoreToHFWeightConverterBase,
         module: AllGatherPPModel = None,
+        device_mesh,
+        offload_param: bool = True,
     ):
         from megatron.core import parallel_state as mpu
 
         self.actor_module = actor_module
         self.inference_engine = inference_engine
+        self.offload_param = offload_param
+
+        # For AsyncLLM, inference_engine and model_runner are defer initialized in vLLMAsyncRollout.load_model
+        if "vllm_v_0_6_3" in str(type(self.inference_engine)) or "vllm_v_0_5_4" in str(type(self.inference_engine)):
+            # vLLM <= v0.6.3
+            self.model_runner = self.inference_engine.llm_engine.model_executor.worker.model_runner if self.inference_engine else None
+        else:
+            # vLLM > v0.6.3
+            self.model_runner = self.inference_engine.llm_engine.model_executor.driver_worker.worker.model_runner if self.inference_engine else None
+
         self.model_config = model_config
         self.transformer_config = transformer_config
         self.layer_name_mapping = layer_name_mapping
@@ -287,11 +302,9 @@ class MegatronVLLMShardingManager(BaseShardingManager):
         # initialize groups for vllm inference
         self.rank = torch.distributed.get_rank()
         self.world_size = torch.distributed.get_world_size()
-        self.infer_tp_size = vllm_ps.get_tensor_model_parallel_world_size()
-        self.infer_tp_rank = vllm_ps.get_tensor_model_parallel_rank()
-        self.infer_tp_group = vllm_ps.get_tensor_model_parallel_group()
-        if vllm_version not in ("0.5.4", "0.6.3"):
-            self.infer_tp_group = self.infer_tp_group.device_group
+        self.device_mesh = device_mesh
+        self.infer_tp_size = self.device_mesh["infer_tp"].size()
+        self.infer_tp_rank = self.device_mesh["infer_tp"].get_local_rank()
         self.train_tp_size = mpu.get_tensor_model_parallel_world_size()
         self.train_tp_rank = mpu.get_tensor_model_parallel_rank()
         self.train_tp_group = mpu.get_tensor_model_parallel_group()
@@ -303,6 +316,15 @@ class MegatronVLLMShardingManager(BaseShardingManager):
         self.train_etp_group = mpu.get_expert_tensor_parallel_group()
         self.need_tp_reshard = self.train_tp_size != self.infer_tp_size
         self.train_tp_larger = self.train_tp_size > self.infer_tp_size
+
+        self.torch_random_states = get_torch_device().get_rng_state()
+        if self.device_mesh is not None:
+            gen_dp_rank = self.device_mesh["dp"].get_local_rank()
+            get_torch_device().manual_seed(gen_dp_rank + 1000)  # make sure all tp ranks have the same random states
+            self.gen_random_states = get_torch_device().get_rng_state()
+            get_torch_device().set_rng_state(self.torch_random_states)
+        else:
+            self.gen_random_states = None
 
     @GPUMemoryLogger(role="megatron vllm sharding_manager", logger=logger)
     def __enter__(self):
@@ -325,14 +347,23 @@ class MegatronVLLMShardingManager(BaseShardingManager):
                 self.transformer_config,
                 self.layer_name_mapping,
             )
-            model = self.inference_engine.llm_engine.model_executor.driver_worker.worker.model_runner.model
+            model = self.model_runner.model
             patch_vllm_moe_model_weight_loader(model)
             loaded_params = model.load_weights(per_tensor_param)
             info = f"vLLM load weights, loaded_params: {len(loaded_params)}"
             logger.info(info)
 
-            if "tags" in inspect.signature(self.inference_engine.wake_up).parameters:
-                self.inference_engine.wake_up(tags=["kv_cache"])
+        if self.offload_param:
+            offload_megatron_model_to_cpu(self.actor_module)
+        get_torch_device().empty_cache()
+
+        if "tags" in inspect.signature(self.inference_engine.wake_up).parameters:
+            self.inference_engine.wake_up(tags=["kv_cache"])
+
+        # important: need to manually set the random states of each tp to be identical.
+        if self.device_mesh is not None:
+            self.torch_random_states = get_torch_device().get_rng_state()
+            get_torch_device().set_rng_state(self.gen_random_states)
 
     @GPUMemoryLogger(role="megatron vllm sharding_manager", logger=logger)
     def __exit__(self, exc_type, exc_value, traceback):
@@ -347,13 +378,26 @@ class MegatronVLLMShardingManager(BaseShardingManager):
             model.train()
 
         torch.cuda.empty_cache()
+        # restore random states
+        if self.device_mesh is not None:
+            self.gen_random_states = get_torch_device().get_rng_state()
+            get_torch_device().set_rng_state(self.torch_random_states)
 
     @GPUMemoryLogger(role="megatron vllm sharding_manager", logger=logger)
     def preprocess_data(self, data: DataProto) -> DataProto:
         # DP_COMPUTE_PROTO: all training ranks are dp, the same as fsdp
         if self.infer_tp_size == 1:
             return data
-        all_gather_data_proto(data, self.infer_tp_group)
+        # TODO: Current impl doesn't consider FSDP with torch micro-dp
+        if vllm_version in (
+            "0.5.4",
+            "0.6.3",
+        ):
+            group = vllm_ps.get_tensor_model_parallel_group()
+        else:
+            group = vllm_ps.get_tensor_model_parallel_group().device_group
+
+        all_gather_data_proto(data=data, process_group=group)
         return data
 
     @GPUMemoryLogger(role="megatron vllm sharding_manager", logger=logger)

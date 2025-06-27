@@ -235,7 +235,10 @@ class ActorRolloutRefWorker(MegatronWorker):
                     model_hf_config=self.actor_model_config,
                 )
             elif vllm_mode == "spmd":
-                rollout = vLLMRollout(
+                from verl.workers.rollout.vllm_rollout import vLLMAsyncRollout
+
+                vllm_rollout_cls = vLLMRollout if self.config.rollout.mode == "sync" else vLLMAsyncRollout
+                rollout = vllm_rollout_cls(
                     model_path=local_path,
                     config=self.config.rollout,
                     tokenizer=self.tokenizer,
@@ -243,6 +246,8 @@ class ActorRolloutRefWorker(MegatronWorker):
                     device_mesh=rollout_device_mesh,
                     trust_remote_code=trust_remote_code,
                 )
+            else:
+                raise NotImplementedError(f"vllm_mode {vllm_mode} is not supported, must be 'customized' or 'spmd'")
             log_gpu_memory_usage("After building vllm rollout", logger=logger)
 
             # perform weight resharding between actor and rollout
@@ -256,6 +261,8 @@ class ActorRolloutRefWorker(MegatronWorker):
                 layer_name_mapping=layer_name_mapping,
                 actor_module=self.actor.actor_module,
                 weight_converter=weight_converter,
+                device_mesh=rollout_device_mesh,
+                offload_param=self._is_offload_param,
             )
             log_gpu_memory_usage("After building sharding manager", logger=logger)
         elif self.config.rollout.name == "sglang":
@@ -295,6 +302,7 @@ class ActorRolloutRefWorker(MegatronWorker):
                 layer_name_mapping=layer_name_mapping,
                 weight_converter=weight_converter,
                 device_mesh=rollout_device_mesh,
+                offload_param=self._is_offload_param,
             )
             log_gpu_memory_usage("After building sharding manager", logger=logger)
         elif self.config.rollout.name == "sglang_async":
@@ -474,9 +482,6 @@ class ActorRolloutRefWorker(MegatronWorker):
     @GPUMemoryLogger(role="generate_sequences", logger=logger)
     def generate_sequences(self, prompts: DataProto):
         assert self._is_rollout
-        if self._is_offload_param:
-            load_megatron_model_to_gpu(self.actor_module)
-            log_gpu_memory_usage("After load actor params during generate_sequences", logger=logger)
         prompts.batch = prompts.batch.cuda()
         meta_info = {
             "eos_token_id": self.generation_config.eos_token_id if self.generation_config is not None else self.tokenizer.eos_token_id,
