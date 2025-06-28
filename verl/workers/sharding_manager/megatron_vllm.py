@@ -38,13 +38,8 @@ from verl.utils.megatron_utils import (
     offload_megatron_model_to_cpu,
     per_tensor_generator,
 )
-from verl.utils.memory_buffer import (
-    build_memory_buffer,
-    build_memory_reference_from_module,
-    get_weight_buffer_meta_from_module,
-)
+
 from verl.utils.model import normalize_model_name
-from verl.utils.torch_functional import check_cuda_is_available
 from verl.utils.vllm_utils import patch_vllm_moe_model_weight_loader
 
 from .base import BaseShardingManager
