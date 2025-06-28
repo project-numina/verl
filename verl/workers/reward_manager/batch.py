@@ -18,14 +18,11 @@ import torch
 
 from verl import DataProto
 
-<<<<<<< HEAD
 from verl.workers.reward_manager import register
 
 
 @register("batch")
-=======
 
->>>>>>> 0772822 (Small changes for multi-turn rl (#27))
 class BatchRewardManager:
     """
     A batch reward manager that computes rewards for a batch of data.
