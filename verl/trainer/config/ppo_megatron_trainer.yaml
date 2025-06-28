@@ -368,11 +368,20 @@ reward_model:
   max_length: null
   reward_manager: naive
   launch_reward_fn_async: False # custom reward function executed async on CPU, during log_prob
+  sandbox_fusion:
+    url: null # faas url to run code in cloud sandbox
+    max_concurrent: 64 # max concurrent requests to sandbox
+    memory_limit_mb: 1024 # Max memory limit for each sandbox process in MB
+  # Nsight system profiler configs
+  profiler:
+    discrete: False
+    all_ranks: False
+    ranks: null
 
 custom_reward_function:
   path: null
   name: compute_score
-  success_threshold: 0.5 # threshold to determine if the generation is success or failure
+  success_threshold: 0.5
 
 algorithm:
   gamma: 1.0
@@ -404,9 +413,11 @@ trainer:
   nnodes: 1
   n_gpus_per_node: 8
   save_freq: -1
+  esi_redundant_time: 0
   track_token_lengths: true
   positive_reward_threshold: 0.5
   token_length_tag_prefix: "token_length"
+  
   # auto: find the last ckpt to resume. If can't find, start from scratch
   resume_mode: auto # or disable or resume_path if resume_from_path is set
   resume_from_path: null
@@ -420,8 +431,21 @@ trainer:
   max_critic_ckpt_to_keep: null
   # The timeout for ray worker group to wait for the register center to be ready
   ray_wait_register_center_timeout: 300
-  # The number of successful rollouts to store in the rollout database
-  n_successful_rollouts_stored: 3
+  device: cuda
+  # see ppo_trainer.yaml for more details
+  controller_nsight_options:
+    trace: "cuda,nvtx,cublas,ucx"
+    cuda-memory-usage: "true"
+    cuda-graph-trace: "graph"
+  worker_nsight_options:
+    trace: "cuda,nvtx,cublas,ucx"
+    cuda-memory-usage: "true"
+    cuda-graph-trace: "graph"
+    capture-range: "cudaProfilerApi"
+    capture-range-end: null
+    kill: none
+    # The number of successful rollouts to store in the rollout database
+    n_successful_rollouts_stored: 3
 
 ray_init:
   num_cpus: null # `None` means using all CPUs, which might cause hang if limited in systems like SLURM. Please set to a number allowed then.
