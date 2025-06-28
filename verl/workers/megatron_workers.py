@@ -280,7 +280,14 @@ class ActorRolloutRefWorker(MegatronWorker, DistProfilerExtension):
                 offload_param=self._is_offload_param,
             )
             log_gpu_memory_usage("After building sharding manager", logger=logger)
-        elif self.config.rollout.name == "sglang":
+
+        elif self.config.rollout.name in ["sglang", "sglang_async"]:
+            if self.config.rollout.name == "sglang_async":
+                warnings.warn(
+                    "'sglang_async' has been deprecated and merged into 'sglang'. Please use 'sglang' going forward.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
             from verl.workers.rollout.sglang_rollout import SGLangRollout
 
             # NOTE(linjunrong): Due to recent fp8 support in SGLang. Now importing any symbol relate to SGLang's model_runner would check CUDA device capability.
@@ -290,9 +297,21 @@ class ActorRolloutRefWorker(MegatronWorker, DistProfilerExtension):
             # check: https://github.com/sgl-project/sglang/blob/00f42707eaddfc2c0528e5b1e0094025c640b7a0/python/sglang/srt/layers/quantization/fp8_utils.py#L76
             from verl.workers.sharding_manager.megatron_sglang import MegatronSGLangShardingManager
 
+            infer_tp = self.config.rollout.tensor_model_parallel_size
+            dp = self.world_size // infer_tp
+            assert self.world_size % infer_tp == 0, f"rollout world_size: {self.world_size} is not divisible by infer_tp: {infer_tp}"
+            rollout_device_mesh = init_device_mesh("cpu", mesh_shape=(dp, infer_tp, 1), mesh_dim_names=("dp", "tp", "pp"))
+
             local_path = copy_to_local(self.config.model.path)
             log_gpu_memory_usage(f"Before building {self.config.rollout.name} rollout", logger=None)
-            rollout = SGLangRollout(actor_module=local_path, config=self.config.rollout, tokenizer=self.tokenizer, model_hf_config=self.actor_model_config)
+            rollout = SGLangRollout(
+                actor_module=local_path,
+                config=self.config.rollout,
+                processing_class=self.processor if self.processor is not None else self.tokenizer,
+                model_hf_config=self.actor_model_config,
+                trust_remote_code=trust_remote_code,
+                device_mesh=rollout_device_mesh,
+            )
             log_gpu_memory_usage(f"After building {self.config.rollout.name} rollout", logger=None)
 
             from verl.models.mcore import get_mcore_weight_converter
@@ -300,10 +319,13 @@ class ActorRolloutRefWorker(MegatronWorker, DistProfilerExtension):
             weight_converter = get_mcore_weight_converter(self.actor_model_config, self.dtype)
             sharding_manager = MegatronSGLangShardingManager(
                 actor_module=self.actor.actor_module,
-                inference_engine=rollout.inference_engine,
+                inference_engine=rollout._engine,
                 model_config=self.actor_model_config,
+                transformer_config=self.tf_config,
                 layer_name_mapping=layer_name_mapping,
                 weight_converter=weight_converter,
+                device_mesh=rollout_device_mesh,
+                offload_param=self._is_offload_param,
             )
             log_gpu_memory_usage("After building sharding manager", logger=logger)
         else:
