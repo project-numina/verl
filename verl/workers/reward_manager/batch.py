@@ -110,7 +110,7 @@ class BatchRewardManager:
                 logger.warning("MARINA DEBUG: Score is a dict, extracting reward and extra info.")
                 logger.warning(f"MARINA DEBUG: type(score): {type(score)}")
                 logger.warning(f"MARINA DEBUG: score keys:  {score.keys()}")
-                logger.warning(f"MARINA DEBUG: score['score']: {score["score"]}")
+                logger.warning(f"MARINA DEBUG: score['score']: {score['score']}")
                 reward = score["score"]
                 for key, value in score.items():
                     reward_extra_info[key].append(value)
