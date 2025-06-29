@@ -98,10 +98,16 @@ class BatchRewardManager:
             score = scores[i]
 
             if isinstance(score, dict):
+                print("MARINA DEBUG: Score is a dict, extracting reward and extra info.")
+                print("MARINA DEBUG: type(score): ", type(score))
+                print("MARINA DEBUG: score keys: ", score.keys())
+                print("MARINA DEBUG: score: ", score)
                 reward = score["score"]
                 for key, value in score.items():
                     reward_extra_info[key].append(value)
             else:
+                print("MARINA DEBUG: Score is not a dict, extracting reward and extra info.")
+                print("MARINA DEBUG: score: ", score)
                 reward = score
 
             rewards.append(reward)
