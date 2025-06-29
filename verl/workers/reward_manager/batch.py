@@ -75,7 +75,9 @@ class BatchRewardManager:
 
     def __call__(self, data: DataProto, return_dict=False):
         # If there is rm score, we directly return rm score. Otherwise, we compute via rm_score_fn
+        print("MARINA DEBUG: data.batch.keys(): ", data.batch.keys())
         if "rm_scores" in data.batch.keys():
+            print("MARINA DEBUG: rm_scores found in data batch, returning directly.")
             if return_dict:
                 return {"reward_tensor": data.batch["rm_scores"]}
             else:
@@ -101,7 +103,7 @@ class BatchRewardManager:
                 print("MARINA DEBUG: Score is a dict, extracting reward and extra info.")
                 print("MARINA DEBUG: type(score): ", type(score))
                 print("MARINA DEBUG: score keys: ", score.keys())
-                print("MARINA DEBUG: score: ", score)
+                print("MARINA DEBUG: score['score']: ", score["score"])
                 reward = score["score"]
                 for key, value in score.items():
                     reward_extra_info[key].append(value)
