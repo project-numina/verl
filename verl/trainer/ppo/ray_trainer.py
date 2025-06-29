@@ -51,7 +51,9 @@ from verl.trainer.ppo.metric_utils import (
 )
 from verl.trainer.ppo.reward import compute_reward, compute_reward_async
 from verl.trainer.ppo.SIL import RolloutDatabase
-from verl.utils.checkpoint.checkpoint_manager import find_latest_ckpt_path
+from verl.utils.checkpoint.checkpoint_manager import BaseCheckpointManager, find_latest_ckpt_path
+
+from verl.utils.debug import marked_timer
 from verl.utils.metric import (
     reduce_metrics,
 )
@@ -1265,7 +1267,7 @@ class RayPPOTrainer:
                         # add to rollout database
                         if self.config.algorithm.self_imitation_learning:
                             self.rolloutDatabase.add(batch)
-                            with _timer("sil", timing_raw):
+                            with marked_timer("sil", timing_raw, color="purple"):
                                 ids_to_recompute, ids_to_keep = self.rolloutDatabase.replace_one_if_all_failed(batch)
 
                                 sil_metrics = {"sil/n_replaced_generation": len(ids_to_recompute)}
@@ -1282,7 +1284,7 @@ class RayPPOTrainer:
                                     to_recompute = batch.select_idxs(ids_to_recompute)
 
                                     # recompute old_log_probs
-                                    with _timer("sil/old_log_prob", timing_raw):
+                                    with marked_timer("sil/old_log_prob", timing_raw, color="purple"):
                                         to_recompute.batch.pop("old_log_probs")
                                         old_log_prob = self.actor_rollout_wg.compute_log_prob(to_recompute)
                                         old_log_prob.batch.pop("entropys")
@@ -1290,7 +1292,7 @@ class RayPPOTrainer:
 
                                     # recompute reference log_prob
                                     if self.use_reference_policy:
-                                        with _timer("sil/ref", timing_raw):
+                                        with marked_timer("sil/ref", timing_raw, color="purple"):
                                             to_recompute.batch.pop("ref_log_prob")
                                             ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(to_recompute)
                                             to_recompute = to_recompute.union(ref_log_prob)
