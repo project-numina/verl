@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import importlib
 import logging
 import os
 import socket
@@ -180,16 +181,17 @@ class AsyncLLMServerManager:
         self.chat_scheduler_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.chat_scheduler_loop)
 
-        try:
-            self.chat_scheduler = ChatCompletionScheduler(
-                config=self.full_config,
-                server_addresses=self.server_addresses,
-            )
-        except Exception as e:
-            logger.exception(f"chat_scheduler init error: {e}")
-            self.chat_scheduler_exception = e
-        finally:
-            self.chat_scheduler_ready.set()
+        module_path, class_name = self.config.rollout.chat_scheduler.rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        scheduler_cls = getattr(module, class_name)
+        self.chat_scheduler = scheduler_cls(
+            config=self.config.rollout,
+            model_path=self.config.model.path,
+            server_addresses=self.server_addresses,
+            **self.scheduler_kwargs,
+        )
+
+        self.chat_scheduler_ready.set()
         self.chat_scheduler_loop.run_forever()
 
     def wake_up(self):
