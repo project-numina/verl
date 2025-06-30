@@ -181,17 +181,25 @@ class AsyncLLMServerManager:
         self.chat_scheduler_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.chat_scheduler_loop)
 
-        module_path, class_name = self.config.rollout.chat_scheduler.rsplit(".", 1)
-        module = importlib.import_module(module_path)
-        scheduler_cls = getattr(module, class_name)
-        self.chat_scheduler = scheduler_cls(
-            config=self.config.rollout,
-            model_path=self.config.model.path,
-            server_addresses=self.server_addresses,
-            **self.scheduler_kwargs,
-        )
+        try:
+            module_path, class_name = self.config.rollout.chat_scheduler.rsplit(".", 1)
+            module = importlib.import_module(module_path)
+            scheduler_cls = getattr(module, class_name)
+            logger.warning(f"[Rank {os.environ.get('RANK', '?')}] Initializing ChatScheduler: {scheduler_cls.__name__}")
+            self.chat_scheduler = scheduler_cls(
+                config=self.config.rollout,
+                model_path=self.config.model.path,
+                server_addresses=self.server_addresses,
+                **self.scheduler_kwargs,
+            )
+            logger.warning(f"[Rank {os.environ.get('RANK', '?')}] ChatScheduler initialized successfully.")
+            self.chat_scheduler_ready.set()
+        except Exception as e:
+            logger.error(f"[Rank {os.environ.get('RANK', '?')}] ChatScheduler init failed: {e}")
+            self.chat_scheduler_exception = e
+            self.chat_scheduler_ready.set()
+            raise
 
-        self.chat_scheduler_ready.set()
         self.chat_scheduler_loop.run_forever()
 
     def wake_up(self):
