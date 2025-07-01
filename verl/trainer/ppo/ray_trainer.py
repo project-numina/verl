@@ -39,23 +39,23 @@ from tqdm import tqdm
 from verl import DataProto
 from verl.protocol import pad_dataproto_to_divisor, unpad_dataproto
 from verl.single_controller.base import Worker
-from verl.single_controller.ray import RayClassWithInitArgs, RayResourcePool, RayWorkerGroup
+from verl.single_controller.ray import (RayClassWithInitArgs, RayResourcePool,
+                                        RayWorkerGroup)
 from verl.single_controller.ray.base import create_colocated_worker_cls
 from verl.trainer.ppo import core_algos
 from verl.trainer.ppo.core_algos import AdvantageEstimator, agg_loss
-from verl.trainer.ppo.metric_utils import (
-    compute_data_metrics,
-    compute_throughout_metrics,
-    compute_timing_metrics,
-    process_validation_metrics,
-)
+from verl.trainer.ppo.metric_utils import (compute_data_metrics,
+                                           compute_throughout_metrics,
+                                           compute_timing_metrics,
+                                           process_numina_validation_metrics)
 from verl.trainer.ppo.reward import compute_reward, compute_reward_async
-from verl.utils.checkpoint.checkpoint_manager import find_latest_ckpt_path, should_save_ckpt_esi
+from verl.trainer.ppo.SIL import RolloutDatabase
+from verl.utils.checkpoint.checkpoint_manager import (find_latest_ckpt_path,
+                                                      should_save_ckpt_esi)
 from verl.utils.debug import marked_timer
-from verl.utils.metric import (
-    reduce_metrics,
-)
-from verl.utils.seqlen_balancing import get_seqlen_balanced_partitions, log_seqlen_unbalance
+from verl.utils.metric import reduce_metrics
+from verl.utils.seqlen_balancing import (get_seqlen_balanced_partitions,
+                                         log_seqlen_unbalance)
 from verl.utils.torch_functional import masked_mean
 from verl.utils.tracking import ValidationGenerationsLogger
 
@@ -275,6 +275,48 @@ def compute_advantage(
             response_mask=grpo_calculation_mask,
             index=data.non_tensor_batch["uid"],
             norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.GRPO_PASSK:
+        advantages, returns = core_algos.compute_grpo_passk_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            index=data.non_tensor_batch["uid"],
+            norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.REINFORCE_PLUS_PLUS_BASELINE:
+        advantages, returns = core_algos.compute_reinforce_plus_plus_baseline_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            index=data.non_tensor_batch["uid"],
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.REINFORCE_PLUS_PLUS:
+        advantages, returns = core_algos.compute_reinforce_plus_plus_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            gamma=gamma,
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.REMAX:
+        advantages, returns = core_algos.compute_remax_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            reward_baselines=data.batch["reward_baselines"],
+            response_mask=data.batch["response_mask"],
+        )
+
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.RLOO:
+        advantages, returns = core_algos.compute_rloo_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            index=data.non_tensor_batch["uid"],
         )
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
@@ -571,7 +613,8 @@ class RayPPOTrainer:
         if train_sampler is None:
             train_sampler = create_rl_sampler(self.config.data, self.train_dataset)
         if collate_fn is None:
-            from verl.utils.dataset.rl_dataset import collate_fn as default_collate_fn
+            from verl.utils.dataset.rl_dataset import \
+                collate_fn as default_collate_fn
 
             collate_fn = default_collate_fn
 
@@ -623,7 +666,7 @@ class RayPPOTrainer:
         except Exception as e:
             print(f"Warning: Could not set total_training_steps in config. Structure missing? Error: {e}")
 
-    def _dump_generations(self, inputs, outputs, scores, reward_extra_infos_dict, dump_path):
+    def _dump_generations(self, inputs, outputs, scores, reward_extra_infos_dict, data_extra_infos_list, dump_path):
         """Dump rollout/validation samples as JSONL."""
         os.makedirs(dump_path, exist_ok=True)
         filename = os.path.join(dump_path, f"{self.global_steps}.jsonl")
@@ -639,6 +682,17 @@ class RayPPOTrainer:
         for k, v in reward_extra_infos_dict.items():
             if len(v) == n:
                 base_data[k] = v
+
+        if len(data_extra_infos_list):
+            required_keys = set(data_extra_infos_list[0].keys())
+
+            for i, entry in enumerate(data_extra_infos_list):
+                missing_keys = required_keys - set(entry.keys())
+                if missing_keys:
+                    raise ValueError(f"Entry {i} is missing required keys: {missing_keys}")
+
+            for key in required_keys:
+                base_data[key] = [entry[key] for entry in data_extra_infos_list]
 
         lines = []
         for i in range(n):
@@ -697,8 +751,7 @@ class RayPPOTrainer:
 
             # Store original inputs
             input_ids = test_batch.batch["input_ids"]
-            # TODO: Can we keep special tokens except for padding tokens?
-            input_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in input_ids]
+            input_texts = self.decode_tokens(input_ids, keep_special_tokens=True)
             sample_inputs.extend(input_texts)
 
             batch_keys_to_pop = ["input_ids", "attention_mask", "position_ids"]
@@ -715,6 +768,10 @@ class RayPPOTrainer:
                 batch_keys=batch_keys_to_pop,
                 non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
             )
+            if getattr(self.config.data, "return_extra_info", False):
+                test_gen_batch.non_tensor_batch["extra_info"] = test_batch.non_tensor_batch["extra_info"]
+            if getattr(self.config.data, "return_extra_info", False):
+                non_tensor_batch_keys_to_pop.append("extra_info")
 
             test_gen_batch.meta_info = {
                 "eos_token_id": self.tokenizer.eos_token_id,
@@ -743,7 +800,7 @@ class RayPPOTrainer:
 
             # Store generated outputs
             output_ids = test_output_gen_batch.batch["responses"]
-            output_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids]
+            output_texts = self.decode_tokens(output_ids, keep_special_tokens=True)
             sample_outputs.extend(output_texts)
 
             test_batch = test_batch.union(test_output_gen_batch)
@@ -768,11 +825,13 @@ class RayPPOTrainer:
         # dump generations
         val_data_dir = self.config.trainer.get("validation_data_dir", None)
         if val_data_dir:
+            data_extra_infos_list = test_batch.non_tensor_batch.get("extra_info", [{} for _ in range(len(sample_inputs))])
             self._dump_generations(
                 inputs=sample_inputs,
                 outputs=sample_outputs,
                 scores=sample_scores,
                 reward_extra_infos_dict=reward_extra_infos_dict,
+                data_extra_infos_list=data_extra_infos_list,
                 dump_path=val_data_dir,
             )
 
@@ -781,18 +840,21 @@ class RayPPOTrainer:
 
         data_sources = np.concatenate(data_source_lst, axis=0)
 
-        data_src2var2metric2val = process_validation_metrics(data_sources, sample_inputs, reward_extra_infos_dict)
+        data_src2var2metric2val = process_numina_validation_metrics(data_sources, sample_inputs, reward_extra_infos_dict)
+
+        def to_int_with_default(s: str, default: int = 0) -> int:
+            try:
+                return int(s)
+            except (ValueError, TypeError):
+                return default
+            
         metric_dict = {}
         for data_source, var2metric2val in data_src2var2metric2val.items():
-            core_var = "acc" if "acc" in var2metric2val else "reward"
+            core_var = "acc"
             for var_name, metric2val in var2metric2val.items():
-                n_max = max([int(name.split("@")[-1].split("/")[0]) for name in metric2val.keys()])
+                n_max = max([to_int_with_default(name.split("@")[-1].split("/")[0]) for name in metric2val.keys()])
                 for metric_name, metric_val in metric2val.items():
-                    if (
-                        (var_name == core_var)
-                        and any(metric_name.startswith(pfx) for pfx in ["mean", "maj", "best"])
-                        and (f"@{n_max}" in metric_name)
-                    ):
+                    if (core_var in var_name) and any(metric_name.startswith(pfx) for pfx in ["pass"]) and (f"@{n_max}" in metric_name):
                         metric_sec = "val-core"
                     else:
                         metric_sec = "val-aux"
@@ -800,6 +862,27 @@ class RayPPOTrainer:
                     metric_dict[pfx] = metric_val
 
         return metric_dict
+
+    def decode_tokens(self, token_ids, keep_special_tokens=False):
+        """Decode token IDs into text, optionally keeping special tokens but always removing padding.
+
+        Args:
+            token_ids (torch.Tensor): Token IDs to decode
+            keep_special_tokens (bool): Whether to keep special tokens in the decoded text
+
+        Returns:
+            list[str]: List of decoded texts
+        """
+        pad_token_id = self.tokenizer.pad_token_id
+        texts = []
+        for ids in token_ids:
+            # Create a mask where padding tokens are False
+            mask = ids != pad_token_id
+            # Only decode the non-padding tokens
+            filtered_ids = ids[mask]
+            decoded_text = self.tokenizer.decode(filtered_ids, skip_special_tokens=not keep_special_tokens)
+            texts.append(decoded_text)
+        return texts
 
     def init_workers(self):
         """Initialize distributed training workers using Ray backend.
@@ -899,7 +982,12 @@ class RayPPOTrainer:
             self.async_rollout_manager = AgentLoopManager(
                 config=self.config,
                 worker_group=self.actor_rollout_wg,
+                scheduler_kwargs={
+                    "max_cache_size": self.config.actor_rollout_ref.rollout.get("max_cache_size", 10_000)
+                    },
             )
+
+        self.rolloutDatabase = RolloutDatabase(self.config.trainer.n_successful_rollouts_stored, self.config.custom_reward_function.success_threshold)
 
     def _save_checkpoint(self):
         from verl.utils.fs import local_mkdir_safe
@@ -959,6 +1047,12 @@ class RayPPOTrainer:
         with open(local_latest_checkpointed_iteration, "w") as f:
             f.write(str(self.global_steps))
 
+        # save rollout database
+        rollout_db_local_dir = os.path.join(local_global_step_folder, "rollout_db")
+        os.makedirs(rollout_db_local_dir, exist_ok=True)
+        rollout_db_local_path = os.path.join(rollout_db_local_dir, f"rollout_db_{self.global_steps}.pkl")
+        self.rolloutDatabase.save(rollout_db_local_path)
+
     def _load_checkpoint(self):
         if self.config.trainer.resume_mode == "disable":
             return 0
@@ -1016,6 +1110,11 @@ class RayPPOTrainer:
         else:
             print(f"Warning: No dataloader state found at {dataloader_local_path}, will start from scratch")
 
+        # load rollout database
+        rollout_db_local_path = os.path.join(global_step_folder, "rollout_db", f"rollout_db_{self.global_steps}.pkl")
+        self.rolloutDatabase.load(rollout_db_local_path)
+        print(f"Loaded rollout database from {rollout_db_local_path}")
+
     def _balance_batch(self, batch: DataProto, metrics, logging_prefix="global_seqlen"):
         """Reorder the data on single controller such that each dp rank gets similar total tokens"""
         attention_mask = batch.batch["attention_mask"]
@@ -1032,6 +1131,62 @@ class RayPPOTrainer:
             seqlen_list=global_seqlen_lst, partitions=global_partition_lst, prefix=logging_prefix
         )
         metrics.update(global_balance_stats)
+
+    def maybe_log_token_lengths(self, data, step, metrics=None):
+        """Log average token lengths for positive and negative responses."""
+        if not self.config.trainer.get("track_token_lengths", False):
+            return
+
+        threshold = self.config.trainer.get("positive_reward_threshold", 0.5)
+        tag_prefix = self.config.trainer.get("token_length_tag_prefix", "token_length")
+
+        try:
+            if "acc" in data.batch:
+                rewards = data.batch["acc"].cpu().tolist()
+            elif "token_level_scores" in data.batch:
+                rewards = data.batch["token_level_scores"].sum(-1).cpu().tolist()
+            else:
+                print("Warning: Cannot track token lengths - no reward information found")
+                return
+        except Exception as e:
+            print(f"Warning: Error computing rewards for token length tracking: {e}")
+            return
+
+        responses = data.batch["responses"]
+        attention_mask = data.batch["attention_mask"]
+        prompt_len = data.batch["prompts"].shape[-1]
+        valid_response_lengths = attention_mask[:, prompt_len:].sum(dim=-1)
+
+        positive_tokens = []
+        negative_tokens = []
+
+        for i, reward in enumerate(rewards):
+            length = valid_response_lengths[i].item()
+            response_tokens = responses[i][:length].tolist()
+
+            if reward > threshold:
+                positive_tokens.append(response_tokens)
+            else:
+                negative_tokens.append(response_tokens)
+
+        pos_avg_len = 0
+        neg_avg_len = 0
+
+        if positive_tokens:
+            pos_avg_len = sum(len(tokens) for tokens in positive_tokens) / len(positive_tokens)
+
+        if negative_tokens:
+            neg_avg_len = sum(len(tokens) for tokens in negative_tokens) / len(negative_tokens)
+
+        log_dict = {f"{tag_prefix}/positive_avg_token_length": pos_avg_len, f"{tag_prefix}/negative_avg_token_length": neg_avg_len}
+
+        if metrics is not None:
+            metrics.update(log_dict)
+
+        if hasattr(self, "tracker") and self.tracker:
+            self.tracker.log(log_dict, step=step)
+
+        return log_dict
 
     def fit(self):
         """
@@ -1109,6 +1264,10 @@ class RayPPOTrainer:
                     batch_keys=batch_keys_to_pop,
                     non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
                 )
+                if getattr(self.config.data, "return_extra_info", False):
+                    non_tensor_batch_keys_to_pop.append("extra_info")
+                if getattr(self.config.data, "return_extra_info", False):
+                    gen_batch.non_tensor_batch["extra_info"] = batch.non_tensor_batch["extra_info"]
 
                 is_last_step = self.global_steps >= self.total_training_steps
 
@@ -1145,7 +1304,9 @@ class RayPPOTrainer:
                     batch = batch.repeat(repeat_times=self.config.actor_rollout_ref.rollout.n, interleave=True)
                     batch = batch.union(gen_batch_output)
 
-                    batch.batch["response_mask"] = compute_response_mask(batch)
+                    # in multi-turn, chat completion scheduler computes response_mask
+                    if "response_mask" not in batch.batch:
+                        batch.batch["response_mask"] = compute_response_mask(batch)
                     # Balance the number of valid tokens across DP ranks.
                     # NOTE: This usually changes the order of data in the `batch`,
                     # which won't affect the advantage calculation (since it's based on uid),
@@ -1226,8 +1387,53 @@ class RayPPOTrainer:
                             reward_tensor, reward_extra_infos_dict = ray.get(future_reward)
                         batch.batch["token_level_scores"] = reward_tensor
 
+                        batch.batch["acc"] = batch.batch["token_level_scores"].sum(-1)
+
+                        self.maybe_log_token_lengths(batch, self.global_steps, metrics)
+
+                        print(f"{list(reward_extra_infos_dict.keys())=}")
+
                         if reward_extra_infos_dict:
                             batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
+
+                        # add to rollout database
+                        if self.config.algorithm.self_imitation_learning:
+                            self.rolloutDatabase.add(batch)
+                            with _timer("sil", timing_raw):
+                                ids_to_recompute, ids_to_keep = self.rolloutDatabase.replace_one_if_all_failed(batch)
+
+                                sil_metrics = {"sil/n_replaced_generation": len(ids_to_recompute)}
+                                metrics.update(sil_metrics)
+                                # Pad to the next multiple of 8 if needed
+                                # TODO: might failed in multi-node, need to check
+                                world_size = self.actor_rollout_wg.world_size
+                                to_add_to_recompute = (world_size - len(ids_to_recompute) % world_size) % world_size
+                                if to_add_to_recompute > 0:
+                                    ids_to_recompute.extend(ids_to_keep[:to_add_to_recompute])
+                                    ids_to_keep = ids_to_keep[to_add_to_recompute:]
+
+                                if len(ids_to_recompute):
+                                    to_recompute = batch.select_idxs(ids_to_recompute)
+
+                                    # recompute old_log_probs
+                                    with _timer("sil/old_log_prob", timing_raw):
+                                        to_recompute.batch.pop("old_log_probs")
+                                        old_log_prob = self.actor_rollout_wg.compute_log_prob(to_recompute)
+                                        old_log_prob.batch.pop("entropys")
+                                        to_recompute = to_recompute.union(old_log_prob)
+
+                                    # recompute reference log_prob
+                                    if self.use_reference_policy:
+                                        with _timer("sil/ref", timing_raw):
+                                            to_recompute.batch.pop("ref_log_prob")
+                                            ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(to_recompute)
+                                            to_recompute = to_recompute.union(ref_log_prob)
+
+                                    # copy in the original batch
+                                    for key in to_recompute.batch.keys():
+                                        batch.batch[key][ids_to_recompute] = to_recompute.batch[key]
+                                    for key in to_recompute.non_tensor_batch.keys():
+                                        batch.non_tensor_batch[key][ids_to_recompute] = to_recompute.non_tensor_batch[key]
 
                         # compute rewards. apply_kl_penalty if available
                         if self.config.algorithm.use_kl_in_reward:
@@ -1255,6 +1461,17 @@ class RayPPOTrainer:
                             config=self.config.algorithm,
                         )
 
+                        balance_advantage = self.config.algorithm.get("balance_advantage", False)
+                        if balance_advantage:
+                            tr = self.config.algorithm.get("positive_advantage_ratio", None)
+                            if tr is None:
+                                raise ValueError("positive_advantage_ratio must be specified if balance_advantage is True")
+                            assert 0.0 < tr < 1.0, f"positive_advantage_ratio must be 0 < ratio < 1"
+                            batch.batch['advantages'] = self.balance_advantages(batch.batch['advantages'], tr)
+    
+                        if self.config.algorithm.get("remove_negative_advantage", False):
+                            batch.batch["advantages"] = batch.batch["advantages"].clamp(min=0)
+
                     # update critic
                     if self.use_critic:
                         with marked_timer("update_critic", timing_raw, color="pink"):
@@ -1276,14 +1493,16 @@ class RayPPOTrainer:
                     if rollout_data_dir:
                         with marked_timer("dump_rollout_generations", timing_raw, color="green"):
                             print(batch.batch.keys())
-                            inputs = self.tokenizer.batch_decode(batch.batch["prompts"], skip_special_tokens=True)
-                            outputs = self.tokenizer.batch_decode(batch.batch["responses"], skip_special_tokens=True)
+                            inputs = self.decode_tokens(batch.batch["prompts"], keep_special_tokens=True)
+                            outputs = self.decode_tokens(batch.batch["responses"], keep_special_tokens=True)
                             scores = batch.batch["token_level_scores"].sum(-1).cpu().tolist()
+                            data_extra_infos_list = batch.non_tensor_batch.get("extra_info", [{} for _ in range(len(inputs))])
                             self._dump_generations(
                                 inputs=inputs,
                                 outputs=outputs,
                                 scores=scores,
                                 reward_extra_infos_dict=reward_extra_infos_dict,
+                                data_extra_infos_list=data_extra_infos_list,
                                 dump_path=rollout_data_dir,
                             )
 
@@ -1348,3 +1567,39 @@ class RayPPOTrainer:
                     pprint(f"Final validation metrics: {last_val_metrics}")
                     progress_bar.close()
                     return
+
+                progress_bar.update(1)
+                self.global_steps += 1
+
+    def balance_advantages(self, advantages, target_positive_ratio):
+        """
+        Balance the advantages by setting some negative advantages to zero to achieve a target positive ratio.
+        
+        Args:
+            advantages (torch.Tensor): The advantages tensor
+            target_positive_ratio (float): Target ratio of positive advantages (0 < ratio < 1)
+            
+        Returns:
+            torch.Tensor: Balanced advantages tensor
+        """
+        # percentage of rows where there is at least one negative value or positive value
+        negative_rows = (advantages < 0).any(dim=-1).sum()
+        positive_rows = (advantages > 0).any(dim=-1).sum()
+
+        curr_pos_ratio = positive_rows / (positive_rows + negative_rows)
+        if curr_pos_ratio < target_positive_ratio:
+            # calculate how many negative advantages to set to zero so that the positive ratio is > tr
+            new_negative_rows = int(((1 - target_positive_ratio) * positive_rows) / target_positive_ratio)
+            n_negative_to_set_to_zero = negative_rows - new_negative_rows
+            # can be minimum 0 and maximum negative_rows
+            n_negative_to_set_to_zero = max(0, n_negative_to_set_to_zero)
+            n_negative_to_set_to_zero = min(n_negative_to_set_to_zero, negative_rows)
+            ratio = n_negative_to_set_to_zero / negative_rows
+            # find indices of rows where there is at least one negative value
+            neg_mask = (advantages < 0).any(dim=1)
+            neg_idx = torch.nonzero(neg_mask, as_tuple=False).squeeze(1)
+            sampled = neg_idx[torch.randperm(neg_idx.numel())[:n_negative_to_set_to_zero]]
+            advantages[sampled] = 0
+            print(f"[BALANCE ADVANTAGE] Setting {ratio} percentage of negative advantages to zero.")
+        
+        return advantages

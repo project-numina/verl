@@ -197,7 +197,7 @@ class ClearMLLogger:
 
     def finish(self):
         self._task.mark_completed()
-
+    
 
 class _TensorboardAdapter:
     def __init__(self, project_name, experiment_name):

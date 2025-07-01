@@ -740,7 +740,6 @@ critic:
 
 # configs for the reward model
 reward_model:
-
   # Whether to enable reward model. If False, we compute the reward only with the user-defined reward functions.
   # In GSM8K and Math examples, we disable reward model.
   # For RLHF alignment example using full_hh_rlhf, we utilize reward model to assess the responses.
@@ -821,7 +820,7 @@ reward_model:
   # Default is naive. If all verification functions are multiprocessing-safe,
   # the reward manager can be set to prime for parallel verification.
   reward_manager: naive
-
+  
   # Whether to launch custom reward function asynchronously during log_prob
   launch_reward_fn_async: False
 
@@ -858,6 +857,7 @@ custom_reward_function:
 
   # The name of the reward function within the specified file. Default is 'compute_score'.
   name: compute_score
+  success_threshold: 0.5 # threshold to determine if the generation is success or failure
 
 # config for the algorithm
 algorithm:
@@ -873,6 +873,8 @@ algorithm:
 
   # Whether to normalize advantages by std (specific to GRPO)
   norm_adv_by_std_in_grpo: True
+
+  self_imitation_learning: False
 
   # Whether to enable in-reward KL penalty
   use_kl_in_reward: False
@@ -1030,6 +1032,8 @@ trainer:
 
   # Timeout (in seconds) for Ray worker to wait for registration
   ray_wait_register_center_timeout: 300
+  # The number of successful rollouts to store in the rollout database
+  n_successful_rollouts_stored: 3
 
   # Device to run training on (e.g., "cuda", "cpu")
   device: cuda

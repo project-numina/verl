@@ -229,6 +229,7 @@ verl is inspired by the design of Nemo-Aligner, Deepspeed-chat and OpenRLHF. The
 
 and many more awesome work listed in [recipe](recipe/README.md).
 
+and many more awesome work listed in [recipe](recipe/README.md).
 ## Contribution Guide
 
 See [contributions guide](CONTRIBUTING.md)

@@ -381,12 +381,14 @@ reward_model:
 custom_reward_function:
   path: null
   name: compute_score
+  success_threshold: 0.5 # threshold to determine if the generation is success or failure
 
 algorithm:
   gamma: 1.0
   lam: 1.0
   adv_estimator: gae
   norm_adv_by_std_in_grpo: True
+  self_imitation_learning: False
   use_kl_in_reward: False
   kl_penalty: kl  # how to estimate kl divergence
   kl_ctrl:
@@ -412,7 +414,6 @@ trainer:
   n_gpus_per_node: 8
   save_freq: -1
   esi_redundant_time: 0
-  
   # auto: find the last ckpt to resume. If can't find, start from scratch
   resume_mode: auto # or disable or resume_path if resume_from_path is set
   resume_from_path: null
@@ -439,6 +440,8 @@ trainer:
     capture-range: "cudaProfilerApi"
     capture-range-end: null
     kill: none
+  # The number of successful rollouts to store in the rollout database
+  n_successful_rollouts_stored: 3
 
 ray_init:
   num_cpus: null # `None` means using all CPUs, which might cause hang if limited in systems like SLURM. Please set to a number allowed then.

@@ -83,7 +83,6 @@ def load_reward_manager(config, tokenizer, num_examine, **reward_kwargs):
     reward_manager_name = config.reward_model.get("reward_manager", "naive")
     reward_manager_cls = get_reward_manager_cls(reward_manager_name)
 
-    # Try to get a custom reward function based on the configuration
     compute_score = get_custom_reward_fn(config)
     final_compute_score = compute_score
 
