@@ -5,8 +5,6 @@ DIST_CKPT_PATH=${DIST_CKPT_PATH}
 
 python scripts/converter_hf_to_mcore.py --hf_model_path $HF_MODEL_PATH --output_path $DIST_CKPT_PATH
 
-# If you are using vllm<=0.6.3, you might need to set the following environment variable to avoid bugs:
-# export VLLM_ATTENTION_BACKEND=XFORMERS
 export CUDA_DEVICE_MAX_CONNECTIONS=1 # For megatron communication/computation overlapping
 
 python3 -m verl.trainer.main_ppo --config-path=config \
@@ -19,7 +17,7 @@ python3 -m verl.trainer.main_ppo --config-path=config \
     data.max_response_length=2048 \
     data.filter_overlong_prompts=True \
     data.truncation='error' \
-    actor_rollout_ref.model.path= \
+    actor_rollout_ref.model.path=$HF_MODEL_PATH \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.actor.ppo_mini_batch_size=64 \
     actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=4 \

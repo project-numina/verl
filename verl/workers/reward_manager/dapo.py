@@ -18,8 +18,10 @@ import torch
 
 from verl import DataProto
 from verl.utils.reward_score import default_compute_score
+from verl.workers.reward_manager import register
 
 
+@register("dapo")
 class DAPORewardManager:
     """The reward manager."""
 
@@ -40,7 +42,9 @@ class DAPORewardManager:
         self.max_resp_len = max_resp_len
 
         if self.overlong_buffer_cfg is not None:
-            assert self.max_resp_len is not None, f"max_resp_len must be provided if {overlong_buffer_cfg=}, but got None"
+            assert self.max_resp_len is not None, (
+                f"max_resp_len must be provided if {overlong_buffer_cfg=}, but got None"
+            )
 
     def __call__(self, data: DataProto, return_dict: bool = False):
         """We will expand this function gradually based on the available datasets"""

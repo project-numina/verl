@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from typing import Optional, Tuple
+
 import torch
 
 
@@ -20,7 +21,7 @@ def _fused_linear_for_ppo_fwd(
     hidden_states: torch.FloatTensor,
     vocab_weights: torch.FloatTensor,
     input_ids: torch.LongTensor,
-    temperature: float = 1.0
+    temperature: float = 1.0,
 ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
     logits = (hidden_states @ vocab_weights.t()) / temperature
     orig_dtype = logits.dtype
@@ -66,13 +67,12 @@ def _fused_linear_for_ppo_bwd(
     dlogits = dlogits.to(orig_dtype) / temperature
 
     dhidden_states = dlogits @ vocab_weights
-    dvocab_weights = (dlogits.t() @ hidden_states)
+    dvocab_weights = dlogits.t() @ hidden_states
 
     return dhidden_states, dvocab_weights
 
 
 class FusedLinearForPPOFunction(torch.autograd.Function):
-
     @staticmethod
     def forward(
         ctx,
@@ -194,7 +194,6 @@ class FusedLinearForPPOFunction(torch.autograd.Function):
 
 
 class FusedLinearForPPO(torch.nn.Module):
-
     def __init__(self, chunk_size: int = 512):
         super().__init__()
 
