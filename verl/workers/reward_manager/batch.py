@@ -17,6 +17,7 @@ from collections import defaultdict
 import torch
 
 from verl import DataProto
+from verl.workers.reward_manager import register
 
 
 @register("batch")

@@ -19,20 +19,36 @@ import datetime
 import logging
 import os
 import warnings
+from typing import Union
 
 import torch
 import torch.distributed
 from megatron.core import parallel_state as mpu
 from omegaconf import DictConfig, OmegaConf
 
+from verl import DataProto
+from verl.single_controller.base.decorator import Dispatch, register
 from verl.single_controller.base.megatron.worker import MegatronWorker
+from verl.utils import hf_tokenizer, omega_conf_to_dataclass
+from verl.utils.checkpoint.megatron_checkpoint_manager import \
+    MegatronCheckpointManager
 from verl.utils.debug import (DistProfiler, DistProfilerExtension,
-                              ProfilerConfig, log_gpu_memory_usage)
-from verl.utils.device import (get_device_name, get_nccl_backend,
-                               get_torch_device)
+                              GPUMemoryLogger, ProfilerConfig,
+                              log_gpu_memory_usage, simple_timer)
+from verl.utils.debug.performance import reduce_timing
+from verl.utils.device import (get_device_id, get_device_name,
+                               get_nccl_backend, get_torch_device)
+from verl.utils.flops_counter import FlopsCounter
 from verl.utils.fs import copy_to_local
+from verl.utils.megatron_utils import (load_megatron_model_to_gpu,
+                                       load_megatron_optimizer,
+                                       offload_megatron_model_to_cpu,
+                                       offload_megatron_optimizer)
 from verl.utils.model import (load_mcore_dist_weights,
                               load_megatron_gptmodel_weights)
+from verl.workers.actor.megatron_actor import MegatronPPOActor
+from verl.workers.critic.megatron_critic import MegatronPPOCritic
+from verl.workers.reward_model.megatron.reward_model import MegatronRewardModel
 
 logger = logging.getLogger(__file__)
 logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
