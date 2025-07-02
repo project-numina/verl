@@ -190,7 +190,7 @@ class AsyncLLMServerManager:
             scheduler_cls = getattr(module, class_name)
             logger.warning(f"[Rank {os.environ.get('RANK', '?')}] Initializing ChatScheduler: {scheduler_cls.__name__}")
             self.chat_scheduler = scheduler_cls(
-                config=self.config,
+                config=self.full_config,
                 model_path=self.config.model.path,
                 server_addresses=self.server_addresses,
             )
