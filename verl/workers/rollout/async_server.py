@@ -193,8 +193,8 @@ class AsyncLLMServerManager:
                 config=self.config.rollout,
                 model_path=self.config.model.path,
                 server_addresses=self.server_addresses,
-                **self.scheduler_kwargs,
             )
+            # **self.scheduler_kwargs,
             logger.warning(f"[Rank {os.environ.get('RANK', '?')}] ChatScheduler initialized successfully.")
             self.chat_scheduler_ready.set()
         except Exception as e:
