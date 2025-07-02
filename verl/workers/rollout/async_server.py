@@ -122,6 +122,7 @@ class AsyncLLMServerManager:
             config: DictConfig, actor_rollout_ref config.
             worker_group: RayWorkerGroup, worker group of AsyncActorRolloutRefWorker.
         """
+        logger.warning(f"MARINA [Rank {os.environ.get('RANK', '?')}] Initializing AsyncLLMServerManager...")
         self.full_config = config
         self.config = config.actor_rollout_ref
         self.worker_group = worker_group
@@ -170,6 +171,7 @@ class AsyncLLMServerManager:
 
         # Init user provided chat scheduler in sperate thread.
         self.chat_scheduler: ChatCompletionScheduler = None
+
         self.chat_scheduler_exception: Exception = None
         self.chat_scheduler_loop = None
         self.chat_scheduler_ready = threading.Event()
@@ -178,6 +180,7 @@ class AsyncLLMServerManager:
         self.chat_scheduler_ready.wait()
 
     def _init_chat_scheduler(self):
+        logger.warning(f"MARINA in _init_chat_scheduler...")
         self.chat_scheduler_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.chat_scheduler_loop)
 
@@ -233,6 +236,15 @@ class AsyncLLMServerManager:
 
     def generate_sequences(self, prompts: DataProto, **sampling_params) -> DataProto:
         """Generate multiple sequences in parallel via chat scheduler."""
+        import traceback
+
+        if self.chat_scheduler_exception:
+            print("ChatScheduler failed with exception:")
+            traceback.print_exception(type(self.chat_scheduler_exception), self.chat_scheduler_exception, self.chat_scheduler_exception.__traceback__)
+
+        if self.chat_scheduler_exception:
+            raise RuntimeError("ChatScheduler thread raised an exception.") from self.chat_scheduler_exception
+
         assert self.chat_scheduler is not None, "chat scheduler is not initialized."
 
         future = asyncio.run_coroutine_threadsafe(self.chat_scheduler.generate_sequences(prompts, **sampling_params), self.chat_scheduler_loop)
