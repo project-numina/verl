@@ -262,6 +262,7 @@ class ChatCompletionScheduler:
             server_addresses: List[str], OpenAI compatible server addresses.
             max_cache_size: int, max cache size of request_id to address mapping.
         """
+        logger.warning(f"MARINA  Initializing chat_scheduler.ChatCompletionScheduler...")
         self.config = config.actor_rollout_ref.rollout
         model_path = config.actor_rollout_ref.model.path
         self.model_name = "/".join(model_path.split("/")[-2:])
@@ -281,6 +282,7 @@ class ChatCompletionScheduler:
             module_path, class_name = self.config.multi_turn.completion_callback.rsplit(".", 1)
             module = importlib.import_module(module_path)
             self.completion_callback = getattr(module, class_name)(config, self)
+            logger.warning(f"MARINA Use completion_callback: {self.config.multi_turn.completion_callback}")
 
     def submit_chat_completions(self, *, messages: List[Dict[str, str]], request_id: str, info: Dict[str, Any]):
         """Submit chat completion request without wait, completion_callback will be called when the request is done.
