@@ -47,7 +47,9 @@ class CompletionCallback(ABC):
         # Initialize tools from config file
         self.max_assistant_turns = config.actor_rollout_ref.rollout.multi_turn.max_assistant_turns
         tool_config_path = config.actor_rollout_ref.rollout.multi_turn.tool_config_path
-        tool_list = initialize_tools_from_config(tool_config_path) if tool_config_path else []
+        # tool_list = initialize_tools_from_config(tool_config_path) if tool_config_path else []
+        logger.warning(f"Overriding tools from config to [] (from {tool_config_path}) ")
+        tool_list = []
         self.tools = {tool.name: tool for tool in tool_list}
         self._tool_schemas = [tool.tool_schema.model_dump(exclude_unset=True, exclude_none=True) for tool in tool_list]
         print(f"Initialized tools: {self.tools}", flush=True)
