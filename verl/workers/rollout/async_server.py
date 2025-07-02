@@ -185,11 +185,16 @@ class AsyncLLMServerManager:
         asyncio.set_event_loop(self.chat_scheduler_loop)
 
         try:
-            module_path, class_name = self.config.rollout.chat_scheduler.rsplit(".", 1)
-            module = importlib.import_module(module_path)
-            scheduler_cls = getattr(module, class_name)
-            logger.warning(f"[Rank {os.environ.get('RANK', '?')}] Initializing ChatScheduler: {scheduler_cls.__name__}")
-            self.chat_scheduler = scheduler_cls(
+            # module_path, class_name = self.config.rollout.chat_scheduler.rsplit(".", 1)
+            # module = importlib.import_module(module_path)
+            # scheduler_cls = getattr(module, class_name)
+            # logger.warning(f"[Rank {os.environ.get('RANK', '?')}] Initializing ChatScheduler: {scheduler_cls.__name__}")
+            # self.chat_scheduler = scheduler_cls(
+            #     config=self.full_config,
+            #     model_path=self.config.model.path,
+            #     server_addresses=self.server_addresses,
+            # )
+            self.chat_scheduler = ChatCompletionScheduler(
                 config=self.full_config,
                 model_path=self.config.model.path,
                 server_addresses=self.server_addresses,
