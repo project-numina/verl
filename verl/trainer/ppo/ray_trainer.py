@@ -1215,12 +1215,12 @@ class RayPPOTrainer:
                     non_tensor_batch_keys_to_pop.append("tools_kwargs")
                 if "interaction_kwargs" in batch.non_tensor_batch:
                     non_tensor_batch_keys_to_pop.append("interaction_kwargs")
+                if "extra_info" in batch.non_tensor_batch and getattr(self.config.data, "return_extra_info", False):
+                    non_tensor_batch_keys_to_pop.append("extra_info")
                 gen_batch = batch.pop(
                     batch_keys=batch_keys_to_pop,
                     non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
                 )
-                if getattr(self.config.data, "return_extra_info", False):
-                    gen_batch.non_tensor_batch["extra_info"] = batch.non_tensor_batch["extra_info"]
 
                 is_last_step = self.global_steps >= self.total_training_steps
 
