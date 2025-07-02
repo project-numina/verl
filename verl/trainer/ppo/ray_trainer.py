@@ -721,12 +721,12 @@ class RayPPOTrainer:
                 non_tensor_batch_keys_to_pop.append("tools_kwargs")
             if "interaction_kwargs" in test_batch.non_tensor_batch:
                 non_tensor_batch_keys_to_pop.append("interaction_kwargs")
+            if "extra_info" in test_batch.non_tensor_batch and getattr(self.config.data, "return_extra_info", False):
+                non_tensor_batch_keys_to_pop.append("extra_info")
             test_gen_batch = test_batch.pop(
                 batch_keys=batch_keys_to_pop,
                 non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
             )
-            if getattr(self.config.data, "return_extra_info", False):
-                test_gen_batch.non_tensor_batch["extra_info"] = test_batch.non_tensor_batch["extra_info"]
 
             test_gen_batch.meta_info = {
                 "eos_token_id": self.tokenizer.eos_token_id,
