@@ -196,8 +196,9 @@ class AsyncLLMServerManager:
             # )
             self.chat_scheduler = ChatCompletionScheduler(
                 config=self.full_config,
-                model_path=self.config.model.path,
                 server_addresses=self.server_addresses,
+                max_cache_size=100000
+
             )
             # **self.scheduler_kwargs,
             logger.warning(f"[Rank {os.environ.get('RANK', '?')}] ChatScheduler initialized successfully.")
