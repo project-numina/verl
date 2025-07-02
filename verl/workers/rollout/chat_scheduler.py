@@ -406,7 +406,7 @@ class ChatCompletionScheduler:
         n = 1 if batch.meta_info.get("validate", False) else self.config.n
         tasks, batch_conversations = [], [None] * len(batch) * n
 
-        all_sequences_turn_data = [[] for _ in range(len(batch) * n)]
+        all_sequences_turn_data = [{} for _ in range(len(batch) * n)]
 
         for batch_index, conversation in enumerate(batch.non_tensor_batch["raw_prompt"].repeat(n, axis=0)):
             # raw_prompt: [{"role": "user", "content": ""}, ["role": "assistant", "content"], ...]
@@ -426,12 +426,12 @@ class ChatCompletionScheduler:
         await asyncio.gather(*tasks)
         output_batch = self.completion_callback.postprocess(batch, batch_conversations, n=n)
         output_batch.meta_info["timing"] = {"generate_sequences": time.time() - t_start}
-        output_batch.non_tensor_batch["turn_data"] = np.array(all_sequences_turn_data)
+        output_batch.non_tensor_batch["turn_info"] = np.array(all_sequences_turn_data)
         print("[ChatCompletionScheduler] generate_sequences done")
         return output_batch
 
     async def _submit_chat_completions_semaphore(
-        self, messages: List[Dict[str, str]], request_id: str, sampling_params: Dict[str, Any], turn_data: List[Dict[str, Any]]
+        self, messages: List[Dict[str, str]], request_id: str, sampling_params: Dict[str, Any], turn_data: Dict[str, Any]
     ):
         done = asyncio.Event()
 
