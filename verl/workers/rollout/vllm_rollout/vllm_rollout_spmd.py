@@ -337,6 +337,10 @@ class vLLMRollout(BaseRollout):
                     non_tensor_batch["raw_prompt"] = _repeat_interleave(
                         non_tensor_batch["raw_prompt"], self.sampling_params.n
                     )
+                if "extra_info" in non_tensor_batch.keys():
+                    non_tensor_batch["extra_info"] = _repeat_interleave(
+                        non_tensor_batch["extra_info"], self.sampling_params.n
+                    )
 
             seq = torch.cat([idx, response], dim=-1)
 
