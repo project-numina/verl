@@ -111,7 +111,7 @@ class BatchRewardManager:
             logger.warning(f"MARINA DEBUG: i: {i}, score: {type(score)}")
             logger.warning(f"MARINA DEBUG: i: {i}, len(score): {len(score)}")
             score = score[0]
-            logger.warning(f"MARINA DEBUG: i: {i}, score[0]: {type(score[0])}")
+            logger.warning(f"MARINA DEBUG: i: {i}, score[0]: {type(score)}")
 
             if isinstance(score, dict):
                 logger.warning("MARINA DEBUG: Score is a dict, extracting reward and extra info.")
