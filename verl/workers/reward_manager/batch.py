@@ -108,6 +108,10 @@ class BatchRewardManager:
         for i in range(len(data)):
             length = valid_response_lengths[i].item()
             score = scores[i]
+            logger.warning(f"MARINA DEBUG: i: {i}, score: {type(score)}")
+            logger.warning(f"MARINA DEBUG: i: {i}, len(score): {len(score)}")
+            score = score[0]
+            logger.warning(f"MARINA DEBUG: i: {i}, score[0]: {type(score[0])}")
 
             if isinstance(score, dict):
                 logger.warning("MARINA DEBUG: Score is a dict, extracting reward and extra info.")
@@ -118,7 +122,7 @@ class BatchRewardManager:
                 for key, value in score.items():
                     reward_extra_info[key].append(value)
             else:
-                logger.warning(f"MARINA DEBUG: Score is not a dict, extracting reward and extra info.")
+                logger.warning(f"MARINA DEBUG: Score is not a dict")
                 logger.warning(f"MARINA DEBUG: score:  {score}")
                 reward = score
 
