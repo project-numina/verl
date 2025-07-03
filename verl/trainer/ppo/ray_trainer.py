@@ -741,7 +741,7 @@ class RayPPOTrainer:
             reward_extra_infos_dict["reward"].extend(scores)
             print(f"len reward_extra_infos_dict['reward']: {len(reward_extra_infos_dict['reward'])}")
             if "reward_extra_info" in result:
-                for key, lst in result["reward_extra_info"].items():
+                for key, lst in result["reward_extra_info"].items():    
                     reward_extra_infos_dict[key].extend(lst)
                     print(f"len reward_extra_infos_dict['{key}']: {len(reward_extra_infos_dict[key])}")
 
@@ -1263,7 +1263,8 @@ class RayPPOTrainer:
                         print(f"{list(reward_extra_infos_dict.keys())=}")
 
                         if reward_extra_infos_dict:
-                            batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
+                            for k, v in reward_extra_infos_dict.items():
+                                print(f"reward_extra_infos_dict[{k}]: {len(v)}")
 
                         # add to rollout database
                         if self.config.algorithm.self_imitation_learning:
