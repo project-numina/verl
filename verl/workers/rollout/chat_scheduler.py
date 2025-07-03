@@ -415,7 +415,6 @@ class ChatCompletionScheduler:
                         messages=batch_conversations[batch_index],
                         request_id=None,
                         sampling_params=kwargs,
-                        turn_data=all_sequences_turn_data[batch_index],
                         turn_data=turn_data_for_this_turn,
                         extra_info_for_item=batch.non_tensor_batch["extra_info"][batch_index // n]
                         # extra_info_for_item=dict(
