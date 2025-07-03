@@ -1262,8 +1262,20 @@ class RayPPOTrainer:
 
                         print(f"{list(reward_extra_infos_dict.keys())=}")
 
+                        # if reward_extra_infos_dict:
+                        #     batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
+
                         if reward_extra_infos_dict:
-                            batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
+                            fixed_reward_dict = {}
+                            for k, v in reward_extra_infos_dict.items():
+                                try:
+                                    arr = np.array(v)
+                                    fixed_reward_dict[k] = arr
+                                except ValueError as e:
+                                    print(f"[WARN] Converting key '{k}' to np.array  due to ValueError: {e}")
+                                    # Optionally: use object array if that's acceptable
+                                    fixed_reward_dict[k] = np.array(v, dtype=object)
+                            batch.non_tensor_batch.update(fixed_reward_dict)
 
                         # add to rollout database
                         if self.config.algorithm.self_imitation_learning:
