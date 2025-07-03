@@ -393,6 +393,7 @@ class ChatCompletionScheduler:
 
         all_sequences_turn_data = [{} for _ in range(len(batch) * n)]
 
+        logger.warning(f"MARINA batch.non_tensor_batch.keys(): {list(batch.non_tensor_batch.keys())}")
         for batch_index, conversation in enumerate(batch.non_tensor_batch["raw_prompt"].repeat(n, axis=0)):
             # raw_prompt: [{"role": "user", "content": ""}, ["role": "assistant", "content"], ...]
             batch_conversations[batch_index] = conversation.tolist()
@@ -404,6 +405,9 @@ class ChatCompletionScheduler:
                         request_id=None,
                         sampling_params=kwargs,
                         turn_data=all_sequences_turn_data[batch_index],
+                        extra_info_for_item=dict(
+                            formal_statement=batch.non_tensor_batch["formal_statement"][batch_index].tolist(),
+                        )
                     )
                 )
             )
@@ -416,7 +420,13 @@ class ChatCompletionScheduler:
         return output_batch
 
     async def _submit_chat_completions_semaphore(
-            self, messages: List[Dict[str, str]], request_id: str, sampling_params: Dict[str, Any], turn_data: Dict[str, Any]
+            self, 
+            messages: 
+            List[Dict[str, str]], 
+            request_id: str, 
+            sampling_params: Dict[str, Any], 
+            turn_data: Dict[str, Any],
+            extra_info_for_item: Dict[str, Any]
     ):
         done = asyncio.Event()
 
@@ -426,6 +436,7 @@ class ChatCompletionScheduler:
             "__sampling_params__": sampling_params,
             "current_turn": 0,
             "turn_data": turn_data,  # used to collect turn data for each sequence
+            "extra_info_for_item": extra_info_for_item,  # additional info for each item
         }
 
         self.submit_chat_completions(messages=messages, request_id=request_id, info=info)
