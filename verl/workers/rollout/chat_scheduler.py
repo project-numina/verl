@@ -393,6 +393,8 @@ class ChatCompletionScheduler:
 
         all_sequences_turn_data = [{} for _ in range(len(batch) * n)]
 
+        logger.warning(f"MARINA n: {n}")
+        logger.warning(f"MARINA len(batch.non_tensor_batch): {len(batch.non_tensor_batch)}")
         logger.warning(f"MARINA batch.non_tensor_batch.keys(): {list(batch.non_tensor_batch.keys())}")
         logger.warning(f"MARINA batch.non_tensor_batch['extra_info']: {list(batch.non_tensor_batch['extra_info'])}")
         for batch_index, conversation in enumerate(batch.non_tensor_batch["raw_prompt"].repeat(n, axis=0)):
