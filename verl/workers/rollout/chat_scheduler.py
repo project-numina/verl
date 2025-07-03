@@ -422,7 +422,8 @@ class ChatCompletionScheduler:
         await asyncio.gather(*tasks)
         output_batch = self.completion_callback.postprocess(batch, batch_conversations, n=n)
         output_batch.meta_info["timing"] = {"generate_sequences": time.time() - t_start}
-        output_batch.non_tensor_batch["turn_info"] = np.array(all_sequences_turn_data)
+        output_batch.non_tensor_batch["turn_info"] = np.array(all_sequences_turn_data, dtype=object)
+        print("[ChatCompletionScheduler] len(turn_info_={len(output_batch.non_tensor_batch['turn_info'])})")
         print("[ChatCompletionScheduler] generate_sequences done")
         return output_batch
 
