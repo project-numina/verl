@@ -66,7 +66,10 @@ class BatchRewardManager:
         extras = data.non_tensor_batch.get("extra_info", [None] * len(data))
         turns = data.non_tensor_batch.get("turn_info", [None] * len(data))
         logger.warning(f"MARINA DEBUG: turns[0]: {type(turns[0])}")
-        logger.warning(f"MARINA DEBUG: turns[0].keys(): {type(turns[0].keys())}")
+        logger.warning(f"MARINA DEBUG: turns[0]: {turns[0]}")
+        logger.warning(f"MARINA DEBUG: extras[0]: {type(extras[0])}")
+        logger.warning(f"MARINA DEBUG: extras[0]: {extras[0]}")
+        # logger.warning(f"MARINA DEBUG: turns[0].keys(): {type(turns[0].keys())}")
 
         scores = self.compute_score(
             data_sources=data_sources,
