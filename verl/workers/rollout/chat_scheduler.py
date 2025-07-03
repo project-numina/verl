@@ -401,7 +401,8 @@ class ChatCompletionScheduler:
             # raw_prompt: [{"role": "user", "content": ""}, ["role": "assistant", "content"], ...]
             batch_conversations[batch_index] = conversation.tolist()
 
-            logger.warning(f"MARINA batch_index: {batch_index}, batch.non_tensor_batch['extra_info'][{batch_index}]: {batch.non_tensor_batch['extra_info'][batch_index]}")
+            non_tensor_batch_index = batch_index // n
+            logger.warning(f"MARINA batch_index: {non_tensor_batch_index}, batch.non_tensor_batch['extra_info'][{non_tensor_batch_index}]: {batch.non_tensor_batch['extra_info'][non_tensor_batch_index]}")
 
             tasks.append(
                 asyncio.create_task(
@@ -410,7 +411,7 @@ class ChatCompletionScheduler:
                         request_id=None,
                         sampling_params=kwargs,
                         turn_data=all_sequences_turn_data[batch_index],
-                        extra_info_for_item=batch.non_tensor_batch["extra_info"][batch_index]
+                        extra_info_for_item=batch.non_tensor_batch["extra_info"][batch_index // n]
                         # extra_info_for_item=dict(
                         #     formal_statement=batch.non_tensor_batch["formal_statement"][batch_index].tolist(),
                         # )
