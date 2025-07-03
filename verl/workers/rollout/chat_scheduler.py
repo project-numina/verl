@@ -308,6 +308,7 @@ class ChatCompletionScheduler:
         info: Dict[str, Any],
     ):
         """Submit chat completion request, wait request finish and do callback."""
+        print(f"MARINA _submit_chat_completions_and_callback info.keys(): {list(info.keys())}", flush=True)
         if request_id:
             request_id = request_id.removeprefix("chatcmpl-")
             assert request_id in self.request_id_to_address
