@@ -402,7 +402,7 @@ class ChatCompletionScheduler:
             batch_conversations[batch_index] = conversation.tolist()
 
             non_tensor_batch_index = batch_index // n
-            logger.warning(f"MARINA batch_index: {non_tensor_batch_index}, batch.non_tensor_batch['extra_info'][{non_tensor_batch_index}]: {batch.non_tensor_batch['extra_info'][non_tensor_batch_index]}")
+            logger.warning(f"MARINA batch_index: {batch_index} non_tensor_batch_index: {non_tensor_batch_index}, batch.non_tensor_batch['extra_info'][{non_tensor_batch_index}]: {batch.non_tensor_batch['extra_info'][non_tensor_batch_index]}")
 
             tasks.append(
                 asyncio.create_task(
