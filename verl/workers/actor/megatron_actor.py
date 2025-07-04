@@ -277,7 +277,7 @@ class MegatronPPOActor(BasePPOActor):
         else:
             data = data.select(batch_keys=select_keys)
         print(f"[MegatronPPOActor] self.config.ppo_mini_batch_size: {self.config.ppo_mini_batch_size}")
-        fake_ppo_mini_batch_size = 1
+        fake_ppo_mini_batch_size = 64
         return data.make_iterator(
             mini_batch_size=fake_ppo_mini_batch_size,
             epochs=self.config.ppo_epochs,
