@@ -276,6 +276,8 @@ class MegatronPPOActor(BasePPOActor):
             data = data.select(select_keys, ["multi_modal_inputs"])
         else:
             data = data.select(batch_keys=select_keys)
+        print(f"[MegatronPPOActor] self.config.ppo_mini_batch_size: {self.config.ppo_mini_batch_size}")
+        # fake_ppo_mini_batch_size = 64
         return data.make_iterator(
             mini_batch_size=self.config.ppo_mini_batch_size,
             epochs=self.config.ppo_epochs,

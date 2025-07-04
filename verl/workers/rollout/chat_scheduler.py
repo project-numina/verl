@@ -428,7 +428,7 @@ class ChatCompletionScheduler:
         # output_batch = self.completion_callback.postprocess(batch, batch_conversations, n=n)
         output_batch = self.completion_callback.postprocess(batch, all_sequences_turn_data, n=n)
         output_batch.meta_info["timing"] = {"generate_sequences": time.time() - t_start}
-        output_batch.non_tensor_batch["turn_info"] = np.array(all_sequences_turn_data)
+        output_batch.non_tensor_batch["turn_info"] = np.array(all_sequences_turn_data, dtype=object)
         print("[ChatCompletionScheduler] generate_sequences done")
         return output_batch
 
