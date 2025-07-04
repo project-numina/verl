@@ -1406,9 +1406,6 @@ class RayPPOTrainer:
                 # TODO: make a canonical logger that supports various backend
                 logger.log(data=metrics, step=self.global_steps)
 
-                progress_bar.update(1)
-                self.global_steps += 1
-
                 if do_profile:
                     self.actor_rollout_wg.stop_profile()
                     if self.use_reference_policy:
