@@ -226,6 +226,8 @@ class AsyncvLLMServer(AsyncServerBase):
 
     async def generate(self, prompt_ids: List[int], sampling_params: Dict[str, Any], request_id: str) -> List[int]:
         max_tokens = self.max_model_len - len(prompt_ids)
+        print(f"MARINA AsyncvLLMServer generate: max_model_len {self.max_model_len}, prompt_ids len {len(prompt_ids)}, max_tokens {max_tokens}")
+        print(f"MARINA AsyncvLLMServer generate: max_tokens {max_tokens}")
         sampling_params = SamplingParams(max_tokens=max_tokens, **sampling_params)
         prompt = TokensPrompt(prompt_token_ids=prompt_ids)
         generator = self.engine.generate(prompt=prompt, sampling_params=sampling_params, request_id=request_id)
