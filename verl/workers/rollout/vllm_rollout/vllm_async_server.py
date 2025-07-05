@@ -213,7 +213,9 @@ class AsyncvLLMServer(AsyncServerBase):
         API reference: https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html
         """
         request_json = await raw_request.json()
+        print(f"MARINA AsyncvLLMServer chat_completion: {request_json}")
         request = ChatCompletionRequest(**request_json)
+        print(f"MARINA ChatCompletionRequest chat_completion: {request}")
         generator = await self.openai_serving_chat.create_chat_completion(request, raw_request)
 
         if isinstance(generator, ErrorResponse):

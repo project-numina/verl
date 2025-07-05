@@ -365,17 +365,12 @@ class ChatCompletionScheduler:
 
             # MARINA Logging max token length and request size
             print(f"MARINA _chat_completions_aiohttp [CHAT COMPLETION REQUEST]")
-            print(f"MARINA _chat_completions_aiohttp chat_complete_request: {chat_complete_request}")
-            model_max_length = chat_complete_request.get("model_max_length", "unknown")
-            max_tokens = chat_complete_request.get("max_tokens", "not_set")
-            messages = chat_complete_request.get("messages", [])
-            prompt_token_count = sum(len(m.get("content", "").split()) for m in messages)  # naive word-based proxy
+            print(f"MARINA _chat_completions_aiohttp chat_complete_request before: {chat_complete_request}")
+            model_max_length = chat_complete_request.get("model_max_length", 32768)  # Default to 32768 if not specified
+            max_completion_tokens = chat_complete_request.get("max_completion_tokens", 31084)
             
             print(f"MARINA _chat_completions_aiohttp Model max length: {model_max_length}")
-            print(f"MARINA _chat_completions_aiohttp Requested max_tokens: {max_tokens}")
-            print(f"MARINA _chat_completions_aiohttp Estimated prompt token count (approx): {prompt_token_count}")
-            if isinstance(model_max_length, int) and isinstance(max_tokens, int):
-                print(f"Total tokens (prompt + gen): {prompt_token_count + max_tokens} / {model_max_length}")
+            print(f"MARINA _chat_completions_aiohttp Requested max_completion_tokens: {max_completion_tokens}")
 
             async with session.post(
             url=f"http://{address}/v1/chat/completions",
