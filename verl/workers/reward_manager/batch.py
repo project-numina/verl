@@ -65,8 +65,6 @@ class BatchRewardManager:
         data_sources = data.non_tensor_batch[self.reward_fn_key]
         extras = data.non_tensor_batch.get("extra_info", [None] * len(data))
         turns = data.non_tensor_batch.get("turn_info", [None] * len(data))
-        logger.warning(f"MARINA DEBUG: turns[0]: {type(turns[0])}")
-        logger.warning(f"MARINA DEBUG: turns[0].keys(): {type(turns[0].keys())}")
 
         scores = self.compute_score(
             data_sources=data_sources,
@@ -81,10 +79,7 @@ class BatchRewardManager:
 
     def __call__(self, data: DataProto, return_dict=False):
         # If there is rm score, we directly return rm score. Otherwise, we compute via rm_score_fn
-        logger.warning(f"MARINA DEBUG: data.batch.keys(): {data.batch.keys()}")
-        logger.warning(f"MARINA DEBUG: data.non_tensor_batch.keys(): {data.non_tensor_batch.keys()}")
         if "rm_scores" in data.batch.keys():
-            logger.warning("MARINA DEBUG: rm_scores found in data batch, returning directly.")
             if return_dict:
                 return {"reward_tensor": data.batch["rm_scores"]}
             else:
@@ -107,16 +102,10 @@ class BatchRewardManager:
             score = scores[i]
 
             if isinstance(score, dict):
-                logger.warning("MARINA DEBUG: Score is a dict, extracting reward and extra info.")
-                logger.warning(f"MARINA DEBUG: type(score): {type(score)}")
-                logger.warning(f"MARINA DEBUG: score keys:  {score.keys()}")
-                logger.warning(f"MARINA DEBUG: score['score']: {score['score']}")
                 reward = score["score"]
                 for key, value in score.items():
                     reward_extra_info[key].append(value)
             else:
-                logger.warning(f"MARINA DEBUG: Score is not a dict, extracting reward and extra info.")
-                logger.warning(f"MARINA DEBUG: score:  {score}")
                 reward = score
 
             rewards.append(reward)
