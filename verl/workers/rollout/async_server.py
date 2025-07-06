@@ -122,7 +122,7 @@ class AsyncLLMServerManager:
             config: DictConfig, actor_rollout_ref config.
             worker_group: RayWorkerGroup, worker group of AsyncActorRolloutRefWorker.
         """
-        logger.warning(f"MARINA [Rank {os.environ.get('RANK', '?')}] Initializing AsyncLLMServerManager...")
+        # logger.warning(f"MARINA [Rank {os.environ.get('RANK', '?')}] Initializing AsyncLLMServerManager...")
         self.full_config = config
         self.config = config.actor_rollout_ref
         self.worker_group = worker_group
@@ -180,7 +180,7 @@ class AsyncLLMServerManager:
         self.chat_scheduler_ready.wait()
 
     def _init_chat_scheduler(self):
-        logger.warning(f"MARINA in _init_chat_scheduler...")
+        # logger.warning(f"MARINA in _init_chat_scheduler...")
         self.chat_scheduler_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.chat_scheduler_loop)
 

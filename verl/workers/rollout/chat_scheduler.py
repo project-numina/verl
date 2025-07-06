@@ -17,6 +17,7 @@ import importlib
 import itertools
 import json
 import logging
+from pydantic import ValidationError
 import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
@@ -264,7 +265,7 @@ class ChatCompletionScheduler:
             server_addresses: List[str], OpenAI compatible server addresses.
             max_cache_size: int, max cache size of request_id to address mapping.
         """
-        logger.warning(f"MARINA  Initializing chat_scheduler.ChatCompletionScheduler...")
+        # logger.warning(f"MARINA  Initializing chat_scheduler.ChatCompletionScheduler...")
         self.config = config.actor_rollout_ref.rollout
         model_path = config.actor_rollout_ref.model.path
         self.model_name = "/".join(model_path.split("/")[-2:])
@@ -279,12 +280,12 @@ class ChatCompletionScheduler:
         self.background_tasks = set()
         if self.config.multi_turn.completion_callback is None:
             self.completion_callback = ToolCompletionCallback(config, self)
-            logger.warning("completion_callback is None, use ToolCompletionCallback")
+            # logger.warning("completion_callback is None, use ToolCompletionCallback")
         else:
             module_path, class_name = self.config.multi_turn.completion_callback.rsplit(".", 1)
             module = importlib.import_module(module_path)
             self.completion_callback = getattr(module, class_name)(config, self)
-            logger.warning(f"MARINA Use completion_callback: {self.config.multi_turn.completion_callback}")
+            # logger.warning(f"MARINA Use completion_callback: {self.config.multi_turn.completion_callback}")
 
     def submit_chat_completions(self, *, messages: List[Dict[str, str]], request_id: str, info: Dict[str, Any]):
         """Submit chat completion request without wait, completion_callback will be called when the request is done.
@@ -324,7 +325,7 @@ class ChatCompletionScheduler:
         completions, exception = None, None
         try:
             # NOTE: OpenAI client uses httpx, seems to have performance issue in high concurrency requests.
-            print(f"MARINA _submit_chat_completions_and_callback info['__sampling_params__']: {info['__sampling_params__']}")
+            # print(f"MARINA _submit_chat_completions_and_callback info['__sampling_params__']: {info['__sampling_params__']}")
             completions = await self._chat_completions_aiohttp(
                 address,
                 messages=messages,
@@ -378,7 +379,10 @@ class ChatCompletionScheduler:
             json=chat_complete_request,
             ) as resp:
                 data = await resp.json()
-                return ChatCompletion(**data)
+                try:
+                    return ChatCompletion(**data)
+                except ValidationError as e:
+                    raise ValueError(f"Invalid response format: {e}")
         finally:
             await session.close()
 
@@ -404,16 +408,16 @@ class ChatCompletionScheduler:
 
         all_sequences_turn_data = [{} for _ in range(len(batch) * n)]
 
-        logger.warning(f"MARINA n: {n}")
-        logger.warning(f"MARINA len(batch.non_tensor_batch): {len(batch.non_tensor_batch)}")
-        logger.warning(f"MARINA batch.non_tensor_batch.keys(): {list(batch.non_tensor_batch.keys())}")
-        logger.warning(f"MARINA batch.non_tensor_batch['extra_info']: {list(batch.non_tensor_batch['extra_info'])}")
+        # logger.warning(f"MARINA n: {n}")
+        # logger.warning(f"MARINA len(batch.non_tensor_batch): {len(batch.non_tensor_batch)}")
+        # logger.warning(f"MARINA batch.non_tensor_batch.keys(): {list(batch.non_tensor_batch.keys())}")
+        # logger.warning(f"MARINA batch.non_tensor_batch['extra_info']: {list(batch.non_tensor_batch['extra_info'])}")
         for batch_index, conversation in enumerate(batch.non_tensor_batch["raw_prompt"].repeat(n, axis=0)):
             # raw_prompt: [{"role": "user", "content": ""}, ["role": "assistant", "content"], ...]
             batch_conversations[batch_index] = conversation.tolist()
 
             non_tensor_batch_index = batch_index // n
-            logger.warning(f"MARINA batch_index: {batch_index} non_tensor_batch_index: {non_tensor_batch_index}, batch.non_tensor_batch['extra_info'][{non_tensor_batch_index}]: {batch.non_tensor_batch['extra_info'][non_tensor_batch_index]}")
+            # logger.warning(f"MARINA batch_index: {batch_index} non_tensor_batch_index: {non_tensor_batch_index}, batch.non_tensor_batch['extra_info'][{non_tensor_batch_index}]: {batch.non_tensor_batch['extra_info'][non_tensor_batch_index]}")
 
             tasks.append(
                 asyncio.create_task(

@@ -1146,6 +1146,7 @@ class RayPPOTrainer:
 
                 with marked_timer("step", timing_raw):
                     # generate a batch
+                    print(f"MARINA gen")
                     with marked_timer("gen", timing_raw, color="red"):
                         if not self.async_rollout_mode:
                             gen_batch_output = self.actor_rollout_wg.generate_sequences(gen_batch)
@@ -1187,6 +1188,7 @@ class RayPPOTrainer:
                     # compute global_valid tokens
                     batch.meta_info["global_token_num"] = torch.sum(batch.batch["attention_mask"], dim=-1).tolist()
 
+                    print(f"MARINA reward")
                     with marked_timer("reward", timing_raw, color="yellow"):
                         # compute reward model score
                         if self.use_rm:
@@ -1199,6 +1201,7 @@ class RayPPOTrainer:
                             reward_tensor, reward_extra_infos_dict = compute_reward(batch, self.reward_fn)
 
                     # recompute old_log_probs
+                    print(f"MARINA old_log_prob")
                     with marked_timer("old_log_prob", timing_raw, color="blue"):
                         old_log_prob = self.actor_rollout_wg.compute_log_prob(batch)
                         entropys = old_log_prob.batch["entropys"]
@@ -1236,6 +1239,7 @@ class RayPPOTrainer:
 
                     if self.use_reference_policy:
                         # compute reference log_prob
+                        print(f"MARINA ref")
                         with marked_timer("ref", timing_raw, color="olive"):
                             if not self.ref_in_actor:
                                 ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(batch)
@@ -1251,6 +1255,7 @@ class RayPPOTrainer:
 
                     with marked_timer("adv", timing_raw, color="brown"):
                         # we combine with rule-based rm
+                        print(f"MARINA adv")
                         reward_extra_infos_dict: dict[str, list]
                         if self.config.reward_model.launch_reward_fn_async:
                             reward_tensor, reward_extra_infos_dict = ray.get(future_reward)
@@ -1269,6 +1274,7 @@ class RayPPOTrainer:
                         if self.config.algorithm.self_imitation_learning:
                             self.rolloutDatabase.add(batch)
                             with marked_timer("sil", timing_raw, color="purple"):
+                                print(f"MARINA sil")
                                 ids_to_recompute, ids_to_keep = self.rolloutDatabase.replace_one_if_all_failed(batch)
 
                                 sil_metrics = {"sil/n_replaced_generation": len(ids_to_recompute)}
@@ -1340,6 +1346,7 @@ class RayPPOTrainer:
                     # update critic
                     if self.use_critic:
                         with marked_timer("update_critic", timing_raw, color="pink"):
+                            print(f"MARINA update critic")
                             critic_output = self.critic_wg.update_critic(batch)
                         critic_output_metrics = reduce_metrics(critic_output.meta_info["metrics"])
                         metrics.update(critic_output_metrics)
@@ -1348,6 +1355,7 @@ class RayPPOTrainer:
                     if self.config.trainer.critic_warmup <= self.global_steps:
                         # update actor
                         with marked_timer("update_actor", timing_raw, color="red"):
+                            print(f"MARINA update actor")
                             batch.meta_info["multi_turn"] = self.config.actor_rollout_ref.rollout.multi_turn.enable
                             actor_output = self.actor_rollout_wg.update_actor(batch)
                         actor_output_metrics = reduce_metrics(actor_output.meta_info["metrics"])
@@ -1357,6 +1365,7 @@ class RayPPOTrainer:
                     rollout_data_dir = self.config.trainer.get("rollout_data_dir", None)
                     if rollout_data_dir:
                         with marked_timer("dump_rollout_generations", timing_raw, color="green"):
+                            print(f"MARINA dump rollout generations")
                             print(batch.batch.keys())
                             inputs = self.decode_tokens(batch.batch["prompts"], keep_special_tokens=True)
                             outputs = self.decode_tokens(batch.batch["responses"], keep_special_tokens=True)
@@ -1374,6 +1383,7 @@ class RayPPOTrainer:
                     # validate
                     if self.val_reward_fn is not None and self.config.trainer.test_freq > 0 and (is_last_step or self.global_steps % self.config.trainer.test_freq == 0):
                         with marked_timer("testing", timing_raw, color="green"):
+                            print(f"MARINA testing")
                             val_metrics: dict = self._validate()
                             if is_last_step:
                                 last_val_metrics = val_metrics
@@ -1384,6 +1394,7 @@ class RayPPOTrainer:
                         if esi_close_to_expiration:
                             print("Force saving checkpoint: ESI instance expiration approaching.")
                         with marked_timer("save_checkpoint", timing_raw, color="green"):
+                            print(f"MARINA save checkpoint")
                             self._save_checkpoint()
 
                 steps_duration = timing_raw["step"]

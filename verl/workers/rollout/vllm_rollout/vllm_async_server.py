@@ -16,6 +16,7 @@ import os
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import cloudpickle
+from fastapi import status
 import ray
 from omegaconf import DictConfig
 from starlette.requests import Request
@@ -212,11 +213,26 @@ class AsyncvLLMServer(AsyncServerBase):
 
         API reference: https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html
         """
-        request_json = await raw_request.json()
-        print(f"MARINA AsyncvLLMServer chat_completion: {request_json}")
-        request = ChatCompletionRequest(**request_json)
-        print(f"MARINA ChatCompletionRequest chat_completion: {request}")
-        generator = await self.openai_serving_chat.create_chat_completion(request, raw_request)
+        try:
+            request_json = await raw_request.json()
+            # print(f"MARINA AsyncvLLMServer chat_completion: {request_json}")
+            request = ChatCompletionRequest(**request_json)
+            # print(f"MARINA ChatCompletionRequest  chat_completion: {request}")
+
+            generator = await self.openai_serving_chat.create_chat_completion(request, raw_request)
+
+        except ValueError as e:
+            # Handle ValueError here, return a 400 Bad Request or similar
+            return JSONResponse(
+                content={"error": str(e)},
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            # Generic fallback
+            return JSONResponse(
+                content={"error": f"Unexpected error: {str(e)}"},
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
         if isinstance(generator, ErrorResponse):
             return JSONResponse(content=generator.model_dump(), status_code=generator.code)
@@ -228,8 +244,6 @@ class AsyncvLLMServer(AsyncServerBase):
 
     async def generate(self, prompt_ids: List[int], sampling_params: Dict[str, Any], request_id: str) -> List[int]:
         max_tokens = self.max_model_len - len(prompt_ids)
-        print(f"MARINA AsyncvLLMServer generate: max_model_len {self.max_model_len}, prompt_ids len {len(prompt_ids)}, max_tokens {max_tokens}")
-        print(f"MARINA AsyncvLLMServer generate: max_tokens {max_tokens}")
         sampling_params = SamplingParams(max_tokens=max_tokens, **sampling_params)
         prompt = TokensPrompt(prompt_token_ids=prompt_ids)
         generator = self.engine.generate(prompt=prompt, sampling_params=sampling_params, request_id=request_id)
