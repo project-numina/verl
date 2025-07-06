@@ -102,7 +102,10 @@ class BatchRewardManager:
             score = scores[i]
 
             if isinstance(score, dict):
-                reward = score["score"]
+                try:
+                    reward = score["score"]
+                except KeyError:
+                    logger.warning(f"Score dictionary for {score} index {i} does not contain 'score' key. Using raw score.")
                 for key, value in score.items():
                     reward_extra_info[key].append(value)
             else:

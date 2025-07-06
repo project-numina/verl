@@ -451,6 +451,30 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                     metric["other/count"] = sum([(r not in reasons) for r in var_vals])
                     data_src2prompt2var2metric[data_source][prompt][var_name] = metric
 
+                if var_name == "fmt_err":
+                    metric = {}
+                    reasons = set([
+                        "UNKNOWN",
+                        "NONE",
+                        "GENERATION_OVER_LENGTH_LIMIT",
+                        "GENERATION_REPEATS",
+                        "NO_VALID_LEAN4_CODE_BLOCK",
+                        "NO_VALID_THINK_BLOCK",
+                        "INVALID_LEAN4_CODE_BLOCK_COUNT",
+                        "INSUFFICIENT_TACTICS_BLOCKS",
+                        "MISSING_CONCLUSION_BLOCK",
+                        "LEAN4_CODE_NOT_START_WITH_STATEMENT",
+                        "LEAN4_CODE_TOO_MANY_COMMENTS_CHAR",
+                        "LEAN4_CODE_TOO_MANY_COMMENTS_LINES",
+                        "TACTIC_CODE_TOO_MANY_COMMENTS_CHAR",
+                        "TACTIC_CODE_TOO_MANY_COMMENTS_LINES",
+                        "TACTIC_CODE_TOO_MANY_LINES",
+                        "TACTIC_BLOCK_FORMATTING_ERROR",
+                        "TACTICS_LEAN4_NOT_MATCH"])
+                    for reason in reasons:
+                        metric[f"{reason}/count"] = sum([reason in r for r in var_vals])
+                    data_src2prompt2var2metric[data_source][prompt][var_name] = metric
+
                 if isinstance(var_vals[0], str):
                     continue
 
@@ -508,6 +532,8 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                 elif metric_name.startswith("p99"):
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.max(prompt_vals)
                 elif var_name.startswith("terminate_reason"):
+                    data_src2var2metric2val[data_source][var_name][metric_name] = np.sum(prompt_vals)
+                elif var_name.startswith("fmt_err"):
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.sum(prompt_vals)
                 else:
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
