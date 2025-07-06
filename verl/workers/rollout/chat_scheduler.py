@@ -363,14 +363,14 @@ class ChatCompletionScheduler:
             timeout = aiohttp.ClientTimeout(total=None)
             session = aiohttp.ClientSession(timeout=timeout)
 
-            # MARINA Logging max token length and request size
-            print(f"MARINA _chat_completions_aiohttp [CHAT COMPLETION REQUEST]")
-            print(f"MARINA _chat_completions_aiohttp chat_complete_request before: {chat_complete_request}")
-            model_max_length = chat_complete_request.get("model_max_length", 32768)  # Default to 32768 if not specified
-            max_completion_tokens = chat_complete_request.get("max_completion_tokens", 31084)
+            # # MARINA Logging max token length and request size
+            # print(f"MARINA _chat_completions_aiohttp [CHAT COMPLETION REQUEST]")
+            # print(f"MARINA _chat_completions_aiohttp chat_complete_request before: {chat_complete_request}")
+            # model_max_length = chat_complete_request.get("model_max_length", 32768)  # Default to 32768 if not specified
+            # max_completion_tokens = chat_complete_request.get("max_completion_tokens", 31084)
             
-            print(f"MARINA _chat_completions_aiohttp Model max length: {model_max_length}")
-            print(f"MARINA _chat_completions_aiohttp Requested max_completion_tokens: {max_completion_tokens}")
+            # print(f"MARINA _chat_completions_aiohttp Model max length: {model_max_length}")
+            # print(f"MARINA _chat_completions_aiohttp Requested max_completion_tokens: {max_completion_tokens}")
 
             async with session.post(
             url=f"http://{address}/v1/chat/completions",
