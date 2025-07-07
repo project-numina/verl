@@ -336,6 +336,8 @@ class MegatronCheckpointManager(BaseCheckpointManager):
                 log_with_rank(f"remove local resume ckpt file after loading failed, exception {e} will be ignored", rank=self.rank, logger=logger)
 
     def save_checkpoint(self, local_path: str, hdfs_path: str = None, global_step: int = 0, max_ckpt_to_keep=None):
+        print(f"[MegatronCheckpointManager] Saving checkpoint at global step {global_step} to {local_path}")
+
         # record the previous global step
         self.previous_global_step = global_step
 
@@ -348,8 +350,11 @@ class MegatronCheckpointManager(BaseCheckpointManager):
         local_path = local_mkdir_safe(local_path)
         dist_checkpoint_path = get_dist_checkpoint_path(local_path)
 
+        print(f"[MegatronCheckpointManager] Dist checkpoint path: {dist_checkpoint_path}")
         # Generate state dict for saving
         state_dict = self.generate_state_dict()
+        print(f"[MegatronCheckpointManager] Generated state dict keys: {state_dict.keys()}")
+
         log_with_rank(f"Generated state dict for saving: {state_dict.keys()}", rank=self.rank, logger=logger)
         for vpp_rank, model in enumerate(self.model):
             if len(self.model) > 1:
@@ -357,6 +362,8 @@ class MegatronCheckpointManager(BaseCheckpointManager):
                 log_with_rank(f"Generated state dict for saving: {model_i_keys}", rank=self.rank, logger=logger)
             else:
                 log_with_rank(f"Generated state dict for saving: {state_dict['model'].keys()}", rank=self.rank, logger=logger)
+
+        log_with_rank(f"Saving checkpoint to {dist_checkpoint_path}", rank=self.rank, logger=logger)
 
         # Start Async save if enabled
         async_save_request = save_dist_checkpointing(
@@ -368,13 +375,19 @@ class MegatronCheckpointManager(BaseCheckpointManager):
         # Synchronize all async save requests
         if not self.checkpoint_config.async_save:
             assert async_save_request is None, "Async save request should be None when not using async save."
+            log_with_rank("Synchronous save checkpointing waiting", rank=self.rank, logger=logger)
+
             torch.distributed.barrier()
+
+        log_with_rank(f"Checkpointing save started for {dist_checkpoint_path}", rank=self.rank, logger=logger)
 
         if self.should_save_model:
             # Only rank 0 saves the hf config and tokenizer to huggingface path
             # No matter whether we save hf model or not
             if self.rank == 0:
                 # Save tokenizer
+                log_with_rank(f"Saving Huggingface tokenizer and config to {local_path}", rank=self.rank, logger=logger)
+
                 hf_config_tokenizer_path = get_hf_model_checkpoint_path(local_path)
                 self.processing_class.save_pretrained(hf_config_tokenizer_path)
                 # Save huggingface config

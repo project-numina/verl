@@ -1122,6 +1122,10 @@ class RayPPOTrainer:
                     if self.use_rm:
                         self.rm_wg.start_profile()
 
+                print("Starting saving")
+                self._save_checkpoint()
+                print("Finished saving")
+
                 metrics = {}
                 timing_raw = {}
                 batch: DataProto = DataProto.from_single_dict(batch_dict)
