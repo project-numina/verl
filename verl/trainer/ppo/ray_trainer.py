@@ -276,9 +276,16 @@ def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_re
             # This mask is the one intended for GRPO
             grpo_calculation_mask = data.batch["loss_mask"][:, -response_length:]
 
-        # print token_level_rewards
-        print(f"token_level_rewards {data.batch['token_level_rewards']}")
-        print(f"token_level_rewards shape {data.batch['token_level_rewards'].shape}")
+        # print token_level_rewards for 100 samples
+        for i in range(100):
+            rewards_i = data.batch['token_level_rewards'][i]
+            mask_i = data.batch['loss_mask'][i].bool()  # explicite: booléen
+
+            print(f"[{i}] token_level_rewards.shape: {rewards_i.shape}")
+            print(f"[{i}] token_level_rewards[:20]: {rewards_i[:20].tolist()}")
+            print(f"[{i}] token_level_rewards on loss_mask: {rewards_i[mask_i].tolist()}")
+            print(f"[{i}] loss_mask sum: {mask_i.sum().item()}")
+            print("---")
 
         # Call compute_grpo_outcome_advantage with parameters matching its definition
         advantages, returns = core_algos.compute_grpo_outcome_advantage(
