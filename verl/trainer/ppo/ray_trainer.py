@@ -273,10 +273,6 @@ def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_re
             print(f"last part of loss_mask shape = {data.batch['loss_mask'][:, -response_length:].shape}")
             print(f"sum of sliced loss_mask = {data.batch['loss_mask'][:, -response_length:].sum(dim=1)}")
 
-
-            #print mean sum mask values for debugging
-            print(f"mean sum of sliced loss_mask = {data.batch['loss_mask'][:, -response_length:].sum(dim=1).mean().item()}")
-
             # This mask is the one intended for GRPO
             grpo_calculation_mask = data.batch["loss_mask"][:, -response_length:]
 
