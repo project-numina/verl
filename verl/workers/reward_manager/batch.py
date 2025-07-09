@@ -66,6 +66,16 @@ class BatchRewardManager:
         extras = data.non_tensor_batch.get("extra_info", [None] * len(data))
         turns = data.non_tensor_batch.get("turn_info", [None] * len(data))
 
+        # print(f"batch.py verify turns: {turns}")
+        print(f'len(turns): {len(turns)}')
+        
+        # print turns[i]["score"] if it exists
+        for i, turn in enumerate(turns):
+            if isinstance(turn, dict) and "score" in turn:
+                print(f"turns[{i}]['score']: {turn['score']}")
+            else:
+                print(f"turns[{i}] does not have 'score' key or is not a dict: {turn}")
+
         scores = self.compute_score(
             data_sources=data_sources,
             solution_strs=responses_str,
@@ -74,6 +84,9 @@ class BatchRewardManager:
             turn_infos=turns,
             **self.reward_kwargs,
         )
+
+        print(f"batch.py verify scores: {scores}")
+        print(f'len(scores): {len(scores)}')
 
         return scores
 
@@ -94,6 +107,7 @@ class BatchRewardManager:
         data_sources = data.non_tensor_batch[self.reward_fn_key]
 
         scores = self.verify(data)
+        print(f"scores: {scores}")
         rewards = []
         already_printed = {}
 
@@ -105,7 +119,7 @@ class BatchRewardManager:
                 try:
                     reward = score["score"]
                 except KeyError:
-                    logger.warning(f"Score dictionary for {score} index {i} does not contain 'score' key. Using raw score.")
+                    logger.warning(f"Score dictionary for {score} index {i} does not contain 'score' key.")
                 for key, value in score.items():
                     reward_extra_info[key].append(value)
             else:
