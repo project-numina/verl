@@ -278,6 +278,8 @@ def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_re
             print(f"[{i}] token_level_rewards[:20]: {rewards_i[:20].tolist()}")
             print(f"[{i}] token_level_rewards on loss_mask: {rewards_i[mask_i].tolist()}")
             print(f"[{i}] loss_mask sum: {mask_i.sum().item()}")
+            print(f"[{i}] token_level_reward_sum: {rewards_i.sum().item()}")
+
             print("---")
 
         # Call compute_grpo_outcome_advantage with parameters matching its definition
