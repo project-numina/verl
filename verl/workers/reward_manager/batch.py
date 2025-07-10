@@ -76,6 +76,7 @@ class BatchRewardManager:
             else:
                 print(f"turns[{i}] does not have 'score' key or is not a dict: {turn}")
 
+        print(f'compute_score: {self.compute_score}')
         scores = self.compute_score(
             data_sources=data_sources,
             solution_strs=responses_str,
