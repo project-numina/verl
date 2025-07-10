@@ -47,15 +47,6 @@ def get_custom_reward_fn(config):
         raise AttributeError(f"Reward function '{function_name}' not found in '{file_path}'.")
 
     print(f"using customized reward function '{function_name}' from '{file_path}'")
-    # using customized reward function 'extract_final_reward' from '/workspace/numina-rl/lean_reward/multi_turn_reward.py'
-        #     def extract_final_reward(
-        #     data_sources, solution_strs, ground_truths, extra_infos, **kwargs
-        # ):
-        #     # use turn_infos keyword argument
-        #     turn_infos = kwargs.get("turn_infos", None)
-        #     if turn_infos is None:
-        #         raise ValueError("turn_infos is required")
-        #     return [turn_info for turn_info in turn_infos]
     raw_fn = getattr(module, function_name)
 
     reward_kwargs = dict(reward_fn_config.get("reward_kwargs", {}))
