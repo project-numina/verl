@@ -276,6 +276,7 @@ def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_re
             response_mask=data.batch["response_mask"],
             index=data.non_tensor_batch["uid"],
             norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+            config=config,
         )
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
