@@ -195,6 +195,7 @@ class AsyncvLLMServer(AsyncServerBase):
         model_config = self.engine.model_config
         BASE_MODEL_PATHS = [BaseModelPath(name=model_name, model_path=model_path)]
         models = OpenAIServingModels(self.engine, model_config, BASE_MODEL_PATHS)
+        print(f"MARINA: OpenAIServingChat config.multi_turn.tool_config_path {config.multi_turn.tool_config_path}")
         self.openai_serving_chat = OpenAIServingChat(
             self.engine,
             model_config,
