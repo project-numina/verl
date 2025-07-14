@@ -15,7 +15,7 @@
 Metrics related to the PPO trainer.
 """
 
-from collections import defaultdict
+from collections import defaultdict, Counter
 from functools import partial
 from typing import Any, Callable, Dict, List
 import random
@@ -540,3 +540,36 @@ def process_numina_validation_metrics(data_sources: list[str], sample_inputs: li
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
     
     return data_src2var2metric2val
+
+
+def process_numina_rollout_metrics(reward_extra_infos_dict):
+    log_dict = {}
+
+    for key, vals in reward_extra_infos_dict.items():
+        #TODO: move this metric to a more general place
+        if key == "terminate_reason":
+            def abbrev(reason: str) -> str:
+                ABBREV = {
+                    "Problem solved": "solved",
+                    "Maximum turns reached": "max_turns",
+                    "No tool feedback": "no_feedback",
+                    "Tool feedback too long": "feedback_long",
+                    "Proof couldn't be parsed previous turn": "parse_error",
+                }
+                return ABBREV.get(reason, "other")   # fallback bucket
+            counts = Counter(vals)
+            for reason, n in counts.items():
+                log_dict[f"{key}/{abbrev(reason)}/count"] = n
+
+        if key == "fmt_err":
+            counts = Counter(vals)
+            for error, n in counts.items():
+                log_dict[f"{key}/{error}/count"] = n
+    
+
+        if key == "verification_time":
+            # mean and max are done later in aggregation
+            log_dict[f"{key}/verification_time/mean"] = np.mean(vals)
+            log_dict[f"{key}/verification_time/p99"] = np.percentile(vals, 99)
+
+    return log_dict

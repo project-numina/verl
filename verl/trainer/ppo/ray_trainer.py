@@ -48,6 +48,7 @@ from verl.trainer.ppo.metric_utils import (
     compute_throughout_metrics,
     compute_timing_metrics,
     process_numina_validation_metrics,
+    process_numina_rollout_metrics
 )
 from verl.trainer.ppo.reward import compute_reward, compute_reward_async
 from verl.trainer.ppo.SIL import RolloutDatabase
@@ -1069,6 +1070,17 @@ class RayPPOTrainer:
             self.tracker.log(log_dict, step=step)
 
         return log_dict
+    
+    def log_numina_rollout_metrics(self, reward_extra_infos_dict, step, metrics=None):
+        log_dict = process_numina_rollout_metrics(reward_extra_infos_dict)
+
+        if metrics is not None:
+            metrics.update(log_dict)
+
+        if hasattr(self, "tracker") and self.tracker:
+            self.tracker.log(log_dict, step=step)
+
+        return log_dict
 
     def fit(self):
         """
@@ -1264,7 +1276,9 @@ class RayPPOTrainer:
                         print(f"{list(reward_extra_infos_dict.keys())=}")
 
                         if reward_extra_infos_dict:
+                            self.log_numina_rollout_metrics(reward_extra_infos_dict, self.global_steps, metrics)
                             batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
+
 
                         # add to rollout database
                         if self.config.algorithm.self_imitation_learning:
