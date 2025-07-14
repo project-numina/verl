@@ -139,6 +139,7 @@ def initialize(config, backend) -> Tuple[Union[AsyncLLMServerManager, ray.actor.
 
     # STEP 2: create dataloader
     tokenizer = hf_tokenizer(config.actor_rollout_ref.model.path)
+    print(f"MARINA tokenizer: {tokenizer.__class__.__name__}")
     dataset = RLHFDataset(
         data_files=os.path.expanduser("~/data/gsm8k/train.parquet"),
         tokenizer=tokenizer,
