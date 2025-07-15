@@ -191,8 +191,17 @@ class AsyncvLLMServer(AsyncServerBase):
         vllm_config.instance_id = f"{namespace}:{self.wg_prefix}:{self.vllm_dp_size}:{self.vllm_dp_rank}"
         self.engine = AsyncLLM.from_vllm_config(vllm_config)
 
+        print(f"MARINA: OpenAIServingChat self.engine.model_config: {self.engine.model_config}")
+
+
         # build serving chat
         model_config = self.engine.model_config
+
+        # print chat template if available of our engine
+        print(f"MARINA: OpenAIServingChat model_config.tokenizer: {model_config.tokenizer}")
+        tok = await self.engine.get_tokenizer()          # real tokenizer
+        print("MARINA: OpenAIServingChat  chat template:\n", tok.chat_template)
+        
         BASE_MODEL_PATHS = [BaseModelPath(name=model_name, model_path=model_path)]
         models = OpenAIServingModels(self.engine, model_config, BASE_MODEL_PATHS)
         print(f"MARINA: OpenAIServingChat config.multi_turn.tool_config_path {config.multi_turn.tool_config_path}")
