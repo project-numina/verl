@@ -555,6 +555,7 @@ def process_numina_rollout_metrics(reward_extra_infos_dict):
                     "No tool feedback": "no_feedback",
                     "Tool feedback too long": "feedback_long",
                     "Proof couldn't be parsed previous turn": "parse_error",
+                    "Not enough tokens for next turn": "not_enough_tokens_left",
                 }
                 return ABBREV.get(reason, "other")   # fallback bucket
             counts = Counter(vals)
