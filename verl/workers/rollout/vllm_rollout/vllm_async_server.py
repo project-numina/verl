@@ -199,7 +199,12 @@ class AsyncvLLMServer(AsyncServerBase):
 
         # print chat template if available of our engine
         print(f"MARINA: OpenAIServingChat model_config.tokenizer: {model_config.tokenizer}")
-        tok = await self.engine.get_tokenizer()          # real tokenizer
+        tok = await self.engine.get_tokenizer()
+        patched = tok.chat_template.replace(
+            "{%- if loop.index0 > ns.last_query_index %}",
+            "{%- if reasoning_content %}",
+        )
+        tok.chat_template = patched
         print("MARINA: OpenAIServingChat  chat template:\n", tok.chat_template)
         
         BASE_MODEL_PATHS = [BaseModelPath(name=model_name, model_path=model_path)]
@@ -211,7 +216,7 @@ class AsyncvLLMServer(AsyncServerBase):
             models,
             "assistant",
             request_logger=RequestLogger(max_log_len=4096),
-            chat_template=None,
+            chat_template=patched,
             chat_template_content_format="auto",
             enable_auto_tools=False, # Hardcoded False config.multi_turn.tool_config_path is not None,
             tool_parser=config.multi_turn.format,  # hermes, llama3_json, ...
