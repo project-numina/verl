@@ -443,6 +443,7 @@ class ChatCompletionScheduler:
             "current_turn": 0,
             "turn_data": turn_data,  # used to collect turn data for each sequence
             "extra_info_for_item": extra_info_for_item,  # additional info for each item
+            "_lock": asyncio.Lock(),   #  lock
         }
 
         self.submit_chat_completions(messages=messages, request_id=request_id, info=info)

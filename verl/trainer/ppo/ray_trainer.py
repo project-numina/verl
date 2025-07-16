@@ -1038,9 +1038,9 @@ class RayPPOTrainer:
         responses = data.batch["responses"]
         attention_mask = data.batch["attention_mask"]
         prompt_len = data.batch["prompts"].shape[-1]
-        for i in range(responses.size(0)):
-            toks = responses[i, -10:].tolist()
-            print(f"[DEBUG] resp[{i:04d}] last10={toks}")
+        # for i in range(responses.size(0)):
+        #     toks = responses[i, -10:].tolist()
+        #     print(f"[DEBUG] resp[{i:04d}] last10={toks}")
         print(f"[DEBUG] prompt_len: {prompt_len} responses shape: {responses.shape}, attention_mask shape: {attention_mask.shape}")
         # (TaskRunner pid=13357) [DEBUG] prompt_len: 1628 responses shape: torch.Size([8192, 31094]), attention_mask shape: torch.Size([8192, 32722])
         response_length = data.batch["responses"].shape[-1]
@@ -1052,6 +1052,9 @@ class RayPPOTrainer:
         print(f"[DEBUG] Method 2: prompt_len: {prompt_mask.sum(-1).float()}, response_length: {response_length}")
         # (TaskRunner pid=13357) [DEBUG] Method 2: prompt_len: tensor([ 362.,  362.,  362.,  ..., 1270., 1270., 1270.]), response_length: tensor([ 6275.,  9831., 14962.,  ...,  4645.,  5428.,  5067.])
         valid_response_lengths = attention_mask[:, prompt_len:].sum(dim=-1)
+        # for i in range(responses.size(0)):
+        #     toks = responses[i, -10:].tolist()
+        #     print(f"[DEBUG] resp[{i:04d}] last10={toks}")
         print(f"[DEBUG] valid_response_lengths: {valid_response_lengths}")
         # (TaskRunner pid=13357) [DEBUG] valid_response_lengths: tensor([ 6275,  9831, 14962,  ...,  4645,  5428,  5067])
 
