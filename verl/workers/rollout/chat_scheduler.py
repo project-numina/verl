@@ -434,6 +434,8 @@ class ChatCompletionScheduler:
     ):
         done = asyncio.Event()
 
+        # print(f"[ChatCompletionScheduler] _submit_chat_completions_semaphore: turn_data={turn_data}, extra_info_for_item={extra_info_for_item}")
+
         info = {
             "__done__": done,
             "__depth__": 0,  # indicate how many ongoing completion requests

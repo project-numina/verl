@@ -225,7 +225,10 @@ def compute_grpo_outcome_advantage(
         Returns: `(torch.Tensor)`
             shape is (bs, response_length)
     """
+    print(f"[GRPO] token_level_rewards: {token_level_rewards.shape}, scores: {token_level_rewards}")
     scores = token_level_rewards.sum(dim=-1)
+    # print number of non-zero elements in token_level_rewards per row
+    print(f"[GRPO] token_level_rewards non-zero count: {torch.count_nonzero(token_level_rewards, dim=-1)}")
 
     print(f"[GRPO] scores: {scores.shape}, scores: {scores}")
 
