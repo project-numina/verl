@@ -420,6 +420,24 @@ class ChatCompletionScheduler:
         output_batch = self.completion_callback.postprocess(batch, batch_conversations, n=n)
         output_batch.meta_info["timing"] = {"generate_sequences": time.time() - t_start}
         output_batch.non_tensor_batch["turn_info"] = np.array(all_sequences_turn_data, dtype=object)
+        
+        # print an example of output_batch.non_tensor_batch["turn_info"] 
+        if len(output_batch.non_tensor_batch["turn_info"]) > 0:
+            print(f"[ChatCompletionScheduler] output_batch.non_tensor_batch['turn_info'][0]: {output_batch.non_tensor_batch['turn_info'][0]}")
+
+        #print all keys and values in output_batch.non_tensor_batch for one example
+        # ── print all non‑tensor fields for a single example ────────────────────────────
+        if output_batch.non_tensor_batch:                       # same as len(...) > 0
+            example_idx = 0                                     # choose the example you want
+            print(f"[ChatCompletionScheduler] non‑tensor fields for example {example_idx}")
+            for key, value in output_batch.non_tensor_batch.items():
+                try:
+                    # Most values are lists/arrays/tuples whose length == batch size
+                    print(f"[ChatCompletionScheduler] {key}: {value[example_idx]}")
+                except (TypeError, IndexError):
+                    # Fallback for scalars or unexpected shapes
+                    print(f"[ChatCompletionScheduler] {key}: {value}")
+
         print("[ChatCompletionScheduler] generate_sequences done")
         return output_batch
 
