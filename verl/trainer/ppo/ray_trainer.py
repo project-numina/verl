@@ -741,7 +741,7 @@ class RayPPOTrainer:
                         new_prompts_gen_batch, size_divisor
                     )
 
-                    print(f'Generating multiiturn responses ({len(idxs_to_update)}/}{len(result["reward_extra_info"]['acc'])})')
+                    print(f'Generating multiiturn responses ({len(idxs_to_update)}/{len(result["reward_extra_info"]['acc'])})')
                     if not self.async_rollout_mode:
                         output_new_prompts_gen_batch_padded = self.actor_rollout_wg.generate_sequences(new_prompts_gen_batch_padded)
                     else:
