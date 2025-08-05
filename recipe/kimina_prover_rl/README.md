@@ -7,7 +7,7 @@
 
 <p align="center">
     <a href="https://projectnumina.ai/"><img alt="Project Numina" src="images/logo_projectNumina_light.png" style="height:20px; width:auto; vertical-align:middle; border-radius:4px;"></a>
-    <a href="https://huggingface.co/AI-MO"><img alt="HF AI-MO" src="https://huggingface.co/datasets/huggingface/brand-assets/resolve/main/hf-logo-with-title.svg" style="max-width:20%;vertical-align:middle; border-radius:4px;"></a>
+    <a href="https://huggingface.co/AI-MO"><img alt="HF AI-MO" src="https://huggingface.co/datasets/huggingface/brand-assets/resolve/main/hf-logo-with-title.svg" style="height:20px;vertical-align:middle; border-radius:4px;"></a>
 </p>
 
 Kimina-prover-rl is an open-source training pipeline for formal theorem proving in Lean 4, based on a structured reasoning-then-generation paradigm inspired by DeepSeek-R1.
