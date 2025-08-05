@@ -2,9 +2,6 @@
 
 set -x
 
-export LEAN_SERVER_API_URL="http://lean.projectnumina.ai"
-# export LEAN_SERVER_API_KEY=my-secret-key
-
 WORKING_DIRECTORY=.
 PROMPT_SET_TRAIN=AI-MO/rl-promptset-v5.1
 PROMPT_SET_TEST=AI-MO/minif2f_test
@@ -74,8 +71,8 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.critic_warmup=0 \
     trainer.logger='["console","wandb"]' \
-    trainer.project_name='rl-release-testing' \
-    trainer.experiment_name="tiny-${USER}" \
+    trainer.project_name='kimina-prover' \
+    trainer.experiment_name='kimina-prover-1.7B-dry-run' \
     trainer.n_gpus_per_node=8 \
     trainer.nnodes=1 \
     trainer.save_freq=5 \

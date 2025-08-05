@@ -1,8 +1,5 @@
 set -x
 
-export LEAN_SERVER_API_URL="http://34.8.168.170"
-# export LEAN_SERVER_API_KEY=""
-
 WORKING_DIRECTORY=.
 PROMPT_SET_TRAIN=AI-MO/rl-promptset-v5.1
 PROMPT_SET_TEST=AI-MO/minif2f_test
@@ -74,7 +71,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.critic_warmup=0 \
     trainer.logger='["console","wandb"]' \
     trainer.project_name='kimina-prover' \
-    trainer.experiment_name='verl-release-5.1-32k-mt' \
+    trainer.experiment_name='kimina-prover-1.7B' \
     trainer.n_gpus_per_node=8 \
     trainer.nnodes=1 \
     trainer.save_freq=5 \
