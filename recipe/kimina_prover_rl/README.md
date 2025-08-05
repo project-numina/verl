@@ -10,7 +10,6 @@
     <a href="https://huggingface.co/AI-MO"><img alt="HF AI-MO" src="https://huggingface.co/datasets/huggingface/brand-assets/resolve/main/hf-logo-with-title.svg" style="max-width:20%;vertical-align:middle; border-radius:4px;"></a>
 </p>
 
-
 Kimina-prover-rl is an open-source training pipeline for formal theorem proving in Lean 4, based on a structured reasoning-then-generation paradigm inspired by DeepSeek-R1.
 
 This training pipeline is a simplified version of the system we used to train Kimina Prover, preserving the key components of the system and offering full compatibility with the open-source verl framework.
