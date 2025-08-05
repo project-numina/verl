@@ -3,7 +3,7 @@ set -x
 export LEAN_SERVER_API_URL="http://34.8.168.170"
 # export LEAN_SERVER_API_KEY=""
 
-WORKING_DIRECTORY=~/numina-rl/
+WORKING_DIRECTORY=.
 PROMPT_SET_TRAIN=AI-MO/rl-promptset-v5.1
 PROMPT_SET_TEST=AI-MO/minif2f_test
 
@@ -13,7 +13,7 @@ max_response_length=$((model_max_len-max_prompt_length))
 actor_ppo_max_token_len=$model_max_len
 infer_ppo_max_token_len=$model_max_len
 
-python3 $WORKING_DIRECTORY/numina_rl/prepare_data.py \
+python3 $WORKING_DIRECTORY/prepare_data.py \
   --train-dataset $PROMPT_SET_TRAIN \
   --test-dataset $PROMPT_SET_TEST \
   --path $WORKING_DIRECTORY \
@@ -34,7 +34,7 @@ python3 -m verl.trainer.main_ppo \
     data.return_raw_chat=True \
     data.dataloader_num_workers=0 \
     data.filter_overlong_prompts=True \
-    data.custom_cls.path="${WORKING_DIRECTORY}/dataset.py" \
+    data.custom_cls.path="${WORKING_DIRECTORY}/kimina_prover_rl/dataset.py" \
     data.custom_cls.name=NuminaRLDataset \
     data.truncation='error' \
     actor_rollout_ref.model.path=AI-MO/Kimina-Prover-Distill-1.7B \
@@ -68,7 +68,7 @@ python3 -m verl.trainer.main_ppo \
     algorithm.use_kl_in_reward=False \
     reward_model.reward_manager=batch \
     reward_model.launch_reward_fn_async=True \
-    custom_reward_function.path="${WORKING_DIRECTORY}/reward/reward.py" \
+    custom_reward_function.path="${WORKING_DIRECTORY}/kimina_prover_rl/reward/reward.py" \
     custom_reward_function.name=reward \
     +custom_reward_function.reward_kwargs.return_dict=True \
     trainer.critic_warmup=0 \
