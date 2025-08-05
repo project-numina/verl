@@ -1,8 +1,7 @@
 <h1 align="center">Kimina Prover RL</h1>
 
 <p align="center">
-<b>A slimmed-down training pipeline from Kimina Prover, with core features and full compatibility with verl. ⚡️</b>
-
+<b>A slimmed-down training pipeline from Kimina Prover, with core features and full compatibility with <a href="https://github.com/takikawa/verl">Verl</a>. ⚡️</b>
 </p>
 
 <p align="center">
@@ -10,24 +9,25 @@
     <a href="https://huggingface.co/AI-MO"><img alt="HF AI-MO" src="https://huggingface.co/datasets/huggingface/brand-assets/resolve/main/hf-logo-with-title.svg" style="height:20px;vertical-align:middle; border-radius:4px;"></a>
 </p>
 
-Kimina-prover-rl is an open-source training pipeline for formal theorem proving in Lean 4, based on a structured reasoning-then-generation paradigm inspired by DeepSeek-R1.
+---
 
-This training pipeline is a simplified version of the system we used to train Kimina Prover, preserving the key components of the system and offering full compatibility with the open-source verl framework.
+**Kimina-Prover-RL** is an open-source training pipeline for formal theorem proving in **Lean 4**, based on a structured *reasoning-then-generation* paradigm inspired by [DeepSeek-R1](https://arxiv.org/abs/2405.14552).
 
-As a result of this training pipeline, we are releasing **AI-MO/Kimina-prover-RL-1.7B**, a 1.7B-parameter model that achieves **76.63% Pass@32** on the MiniF2F benchmark — setting a new state of the art for open-source models in this size category.
+This pipeline is a simplified version of the system used to train **[Kimina Prover](https://arxiv.org/abs/2504.11354)**, retaining its core components and offering full compatibility with the open-source **Verl** framework.
 
+As a result of this training, we are releasing **[`AI-MO/Kimina-Prover-RL-1.7B`](https://huggingface.co/AI-MO/Kimina-Prover-RL-1.7B)** — a 1.7B parameter model that achieves **76.63% Pass@32** on **MiniF2F**, setting a new **state of the art** for open-source models at this scale.
 
-INSERT LINK TO THE BLOG
+👉 **[Read the full blog post →](INSERT LINK TO BLOG)**
 
-## Installation
+## 🚀 Installation
 
-To run this recipe, you need first to follow the verl installation instruction in the README at the root of this repository.
+First, follow the installation instructions for **Verl** in the [main README](../README.md).
 
-Our reward function performs API call to a [kimina-lean-server](https://github.com/project-numina/kimina-lean-server) to verify proofs efficiently. You need to start a kimina-lean-server enable lean proofs verifications.
+To verify Lean 4 proofs efficiently, we use the [**kimina-lean-server**](https://github.com/project-numina/kimina-lean-server), which supports high-throughput parallel checking.
 
-We recommand to use the docker image that we provide.
+We recommend using the Docker image we provide:
 
-```
+```bash
 docker run -d \
   --name server \
   --restart unless-stopped \
@@ -36,34 +36,40 @@ docker run -d \
   projectnumina/kimina-lean-server:2.0.0
 ```
 
-
-You then need to install our client, `kiminia-client`, to interact with the `kimina-lean-server`.
+Then install our Python client, kimina-client, from PyPI:
 
 ```
-pip install kiminia-client
+pip install kimina-client
 ```
 
-## Recipe
-
-## Launch the recipe
-
+## 📦 Running the Recipe
 ```
 cd recipe/kimina_prover_rl
-
 export LEAN_SERVER_API_URL="http://localhost:8000"
 ```
-
-If you've added an api key to your server config, you also need to export it:
+If your server is configured with an API key:
 
 ```
 export LEAN_SERVER_API_KEY="your-api-key"
 ```
 
-To run download and preprocess the data and then launch the training, you can then simply use
+To download and preprocess the dataset, and start training:
 
 ```
 sh kimina_prover_1.7B.sh
 ```
 
+## 📊 Expected Results
 
-## Expected results
+After training, the model achieves 76.63% Pass@32 on MiniF2F
+
+WANDB plots and further metrics coming soon...
+
+## 🧠 Resources
+
+- [Blog Post (training details)](INSERT LINK TO BLOG)
+- [Model on Hugging Face](https://huggingface.co/collections/AI-MO/kimina-prover-686b72614760ed23038056c5)
+- [Dataset on Hugging Face](https://huggingface.co/datasets/AI-MO/NuminaMath-LEAN)
+- [Kimina Lean Server](https://github.com/project-numina/kimina-lean-server)
+- [Kimina Prover Preview paper](https://arxiv.org/abs/2504.11354)
+- [Kimina Prover blog post](https://huggingface.co/blog/AI-MO/kimina-prover)
