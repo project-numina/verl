@@ -34,7 +34,7 @@ python3 -m verl.trainer.main_ppo \
     data.return_raw_chat=True \
     data.dataloader_num_workers=0 \
     data.filter_overlong_prompts=True \
-    data.custom_cls.path="${WORKING_DIRECTORY}/numina_rl/dataset.py" \
+    data.custom_cls.path="${WORKING_DIRECTORY}/dataset.py" \
     data.custom_cls.name=NuminaRLDataset \
     data.truncation='error' \
     actor_rollout_ref.model.path=AI-MO/Kimina-Prover-Distill-1.7B \
@@ -68,12 +68,12 @@ python3 -m verl.trainer.main_ppo \
     algorithm.use_kl_in_reward=False \
     reward_model.reward_manager=batch \
     reward_model.launch_reward_fn_async=True \
-    custom_reward_function.path="${WORKING_DIRECTORY}/numina_rl/reward/reward.py" \
+    custom_reward_function.path="${WORKING_DIRECTORY}/reward/reward.py" \
     custom_reward_function.name=reward \
     +custom_reward_function.reward_kwargs.return_dict=True \
     trainer.critic_warmup=0 \
     trainer.logger='["console","wandb"]' \
-    trainer.project_name='numina-verl-release' \
+    trainer.project_name='kimina-prover' \
     trainer.experiment_name='verl-release-5.1-32k-mt' \
     trainer.n_gpus_per_node=8 \
     trainer.nnodes=1 \
