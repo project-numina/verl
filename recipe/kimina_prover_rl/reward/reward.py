@@ -1,3 +1,17 @@
+# Copyright 2025 Project-Numina and/or its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from kimina_client import (
     CheckResponse,
     KiminaClient,
@@ -6,9 +20,9 @@ from kimina_client import (
     SnippetStatus,
 )
 
-from numina_rl.reward.error_fixing import create_tool_message
-from numina_rl.reward.format_reward import FormatReward
-from numina_rl.reward.proof_utils import FormatError, extract_proof_from_text
+from kimina_prover_rl.reward.error_fixing import create_tool_message
+from kimina_prover_rl.reward.format_reward import FormatReward
+from kimina_prover_rl.reward.proof_utils import FormatError, extract_proof_from_text
 
 # Kimina client uses environment variables `LEAN_SERVER_API_URL` and `LEAN_SERVER_API_KEY`
 # by default. Adjust those in `grpo.sh` or pass in URL and API key here directly.

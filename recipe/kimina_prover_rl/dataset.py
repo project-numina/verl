@@ -1,18 +1,32 @@
+# Copyright 2025 Project-Numina and/or its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
 import random
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import torch
-import verl.utils.torch_functional as verl_F
+import wandb
 from omegaconf import DictConfig
 from transformers import PreTrainedTokenizer, ProcessorMixin
+
+import verl.utils.torch_functional as verl_F
+from kimina_prover_rl.reward.format_reward import FormatError
 from verl import DataProto
 from verl.utils.dataset import RLHFDataset
 from verl.utils.model import compute_position_id_with_mask
-
-import wandb
-from numina_rl.reward.format_reward import FormatError
 
 logger = logging.getLogger(__name__)
 
@@ -74,12 +88,8 @@ class NuminaRLDataset(RLHFDataset):
         self.multi_turn_data = []
         self.multi_turn_enabled = config.get("multiturn", False)
         self.multi_turn_sampling_rate = config.get("multiturn_sampling_rate", 0.5)
-        self.multi_turn_n_samples_in_cache = config.get(
-            "multiturn_n_samples_in_cache", 5000
-        )
-        self.multiturn_max_feedback_length = config.get(
-            "multiturn_max_feedback_length", 3000
-        )
+        self.multi_turn_n_samples_in_cache = config.get("multiturn_n_samples_in_cache", 5000)
+        self.multiturn_max_feedback_length = config.get("multiturn_max_feedback_length", 3000)
         logger.info(
             f"Multi-turn: {'enabled' if self.multi_turn_enabled else 'disabled'}, "
             f"sampling rate: {self.multi_turn_sampling_rate}, "
@@ -98,12 +108,8 @@ class NuminaRLDataset(RLHFDataset):
         messages = self._build_messages(row_dict)
         model_inputs = {}
 
-        raw_prompt = self.tokenizer.apply_chat_template(
-            messages, add_generation_prompt=True, tokenize=False
-        )
-        model_inputs = self.tokenizer(
-            raw_prompt, return_tensors="pt", add_special_tokens=False
-        )
+        raw_prompt = self.tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+        model_inputs = self.tokenizer(raw_prompt, return_tensors="pt", add_special_tokens=False)
         input_ids = model_inputs.pop("input_ids")
         attention_mask = model_inputs.pop("attention_mask")
 
@@ -131,13 +137,9 @@ class NuminaRLDataset(RLHFDataset):
             elif self.truncation == "middle":
                 left_half = self.max_prompt_length // 2
                 right_half = self.max_prompt_length - left_half
-                raw_prompt_ids = (
-                    raw_prompt_ids[:left_half] + raw_prompt_ids[-right_half:]
-                )
+                raw_prompt_ids = raw_prompt_ids[:left_half] + raw_prompt_ids[-right_half:]
             elif self.truncation == "error":
-                raise RuntimeError(
-                    f"Prompt length {len(raw_prompt_ids)} is longer than {self.max_prompt_length}."
-                )
+                raise RuntimeError(f"Prompt length {len(raw_prompt_ids)} is longer than {self.max_prompt_length}.")
 
         row_dict["raw_prompt_ids"] = raw_prompt_ids
         # encode prompts without chat template
@@ -151,12 +153,8 @@ class NuminaRLDataset(RLHFDataset):
         # add index for each prompt
         index = row_dict.get("extra_info", {}).get("index", 0)
         tools_kwargs = row_dict.get("extra_info", {}).get("tools_kwargs", {})
-        interaction_kwargs = row_dict.get("extra_info", {}).get(
-            "interaction_kwargs", {}
-        )
-        need_tools_kwargs = row_dict.get("extra_info", {}).get(
-            "need_tools_kwargs", self.need_tools_kwargs
-        )
+        interaction_kwargs = row_dict.get("extra_info", {}).get("interaction_kwargs", {})
+        need_tools_kwargs = row_dict.get("extra_info", {}).get("need_tools_kwargs", self.need_tools_kwargs)
         if need_tools_kwargs and not tools_kwargs:
             logger.warning(
                 "tools_kwargs is empty for index {}, data source: {}",
@@ -263,11 +261,7 @@ class NuminaRLDataset(RLHFDataset):
         )
         prompt.append({"role": "user", "content": feedback})
 
-        token_length = len(
-            self.tokenizer.apply_chat_template(
-                prompt, add_generation_prompt=True, tokenize=True
-            )
-        )
+        token_length = len(self.tokenizer.apply_chat_template(prompt, add_generation_prompt=True, tokenize=True))
         if token_length > self.max_prompt_length:
             metrics[f"multiturn/turn_{turn_id}/max_prompt_token_len_exceeded"] += 1
             return None
@@ -290,9 +284,9 @@ class NuminaRLDataset(RLHFDataset):
     def validation_generate_next_turn(
         self,
         batch: DataProto,
-        responses: List[str],
+        responses: list[str],
         reward_extra_info,
-    ) -> Tuple[DataProto, List[int]]:
+    ) -> tuple[DataProto, list[int]]:
         """
         Generate the next turn prompts based on the responses and feedback.
         This method is used during validation to create new multi-turn prompts.
@@ -333,19 +327,13 @@ class NuminaRLDataset(RLHFDataset):
         new_prompts_dict = {}
         for key in next_turn_prompts[0]:
             if isinstance((next_turn_prompts[0][key]), torch.Tensor):
-                new_prompts_dict[key] = torch.stack(
-                    [d[key] for d in next_turn_prompts], dim=0
-                )
+                new_prompts_dict[key] = torch.stack([d[key] for d in next_turn_prompts], dim=0)
             else:
-                new_prompts_dict[key] = np.array(
-                    [d[key] for d in next_turn_prompts], dtype=object
-                )
+                new_prompts_dict[key] = np.array([d[key] for d in next_turn_prompts], dtype=object)
 
         return DataProto.from_single_dict(new_prompts_dict), idx_to_update
 
-    def create_multiturn_prompts(
-        self, batch: DataProto, metrics: dict
-    ) -> Tuple[List[dict], dict]:
+    def create_multiturn_prompts(self, batch: DataProto, metrics: dict) -> tuple[list[dict], dict]:
         """
         Process the DataProto batch and extract relevant information.
         This method is used to generate new multi-turn prompts based on the feedback received.
@@ -403,6 +391,4 @@ class NuminaRLDataset(RLHFDataset):
         self.multi_turn_data += new_multi_turn_prompts
 
         # Only keep the last n samples in cache
-        self.multi_turn_data = self.multi_turn_data[
-            -self.multi_turn_n_samples_in_cache :
-        ]
+        self.multi_turn_data = self.multi_turn_data[-self.multi_turn_n_samples_in_cache :]
