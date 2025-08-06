@@ -24,7 +24,7 @@ jobs:
         run: cd recipe/kimina_prover_rl
 
       - name: Install test dependencies
-        run: pip install -r pytest
+        run: pip install pytest
 
       - name: Run tests
         run: pytest
