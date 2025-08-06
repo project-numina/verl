@@ -32,7 +32,7 @@
 
 on:
   pull_request:
-    types: [opened, edited, synchronize]
+    types: [] # Disabled for the numina fork
 
 jobs:
   check-title:
