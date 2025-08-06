@@ -1,0 +1,28 @@
+name: Numina Unit Tests
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install local package (numina_rl)
+        run: cd recipe/kimina_prover_rl && pip install -e .
+
+      - name: Install test dependencies
+        run: pip install -r pytest
+
+      - name: Run tests
+        run: pytest
