@@ -20,11 +20,8 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Setup
-        run: cd recipe/kimina_prover_rl
-
       - name: Install test dependencies
         run: pip install pytest
 
       - name: Run tests
-        run: pytest
+        run: cd recipe/kimina_prover_rl && pytest
