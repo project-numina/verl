@@ -19,8 +19,6 @@ As a result of this training, we are releasing **[`AI-MO/Kimina-Prover-RL-1.7B`]
 
 ![alt text](images/best8_performances.png)
 
-![alt text](image.png)
-
 👉 **[Read the full blog post →](INSERT LINK TO BLOG)**
 
 ## 🚀 Installation
