@@ -17,6 +17,10 @@ This pipeline is a simplified version of the system used to train **[Kimina Prov
 
 As a result of this training, we are releasing **[`AI-MO/Kimina-Prover-RL-1.7B`](https://huggingface.co/AI-MO/Kimina-Prover-RL-1.7B)** — a 1.7B parameter model that achieves **76.63% Pass@32** on **MiniF2F**, setting a new **state of the art** for open-source models at this scale.
 
+![alt text](images/best8_performances.png)
+
+![alt text](image.png)
+
 👉 **[Read the full blog post →](INSERT LINK TO BLOG)**
 
 ## 🚀 Installation
@@ -45,25 +49,42 @@ pip install kimina-client
 ## 📦 Running the Recipe
 ```
 cd recipe/kimina_prover_rl
+
 export LEAN_SERVER_API_URL="http://localhost:8000"
 ```
-If your server is configured with an API key:
+If your server is configured with an API key you also need to export it:
 
 ```
 export LEAN_SERVER_API_KEY="your-api-key"
 ```
 
-To download and preprocess the dataset, and start training:
+To start training simply launch:
 
 ```
 sh kimina_prover_1.7B.sh
 ```
 
+This script will download the dataset and launch the training. Your can edit it to adapt it to your hardware and environment.
+
+Alternatively, you can also launch a smaller version of the training for debugging purposes:
+
+```
+sh kimina_prover_1.7B_dry_run.sh
+```
+
 ## 📊 Expected Results
 
-After training, the model achieves 76.63% Pass@32 on MiniF2F
+During training, you should see on wandb the mean response length growing and the number of formatting errors decreasing:
 
-WANDB plots and further metrics coming soon...
+![alt text](images/response_length.png)
+
+![alt text](images/formatting_errors.png)
+
+You should also see the best@8 mean performances growing on MiniF2F before and after error correction:
+
+![alt text](image.png)
+
+After training, the model achieves 76.63% Pass@32 on MiniF2F
 
 ## 🧠 Resources
 
