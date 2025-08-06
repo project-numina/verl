@@ -31,8 +31,7 @@
 
 
 on:
-  pull_request:
-    types: [] # Disabled for the numina fork
+  workflow_dispatch: # Disabled for numina
 
 jobs:
   check-title:
