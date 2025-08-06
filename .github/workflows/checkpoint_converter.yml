@@ -36,9 +36,13 @@ on:
   # Trigger the workflow on push or pull request,
   # but only for the main branch
   push:
-    branches: [] # Disabled for numina
+    branches:
+      # - main # Disabled for numina
+      - v0.*
   pull_request:
-    branches: [] # Disabled for numina
+    branches:
+      # - main # Disabled for numina
+      - v0.*
     paths:
       - "**/*.py"
       # Other entrypoints
