@@ -32,24 +32,12 @@ class FormatError(Enum):
     INVALID_LEAN4_CODE_BLOCK_COUNT = "There must be exactly one lean4 code block."
     INVALID_THINK_BLOCK_COUNT = "There must be exactly one think block."
     INSUFFICIENT_TACTICS_BLOCKS = "There must be more than one tactics block."
-    MISSING_CONCLUSION_BLOCK = (
-        "Conclusion block is missing between the think block and lean4 code block."
-    )
-    LEAN4_CODE_NOT_START_WITH_STATEMENT = (
-        "Lean 4 code does not start with the formal statement."
-    )
-    LEAN4_CODE_TOO_MANY_COMMENTS_CHAR = (
-        "Lean 4 code contains too many comments (in characters)."
-    )
-    LEAN4_CODE_TOO_MANY_COMMENTS_LINES = (
-        "Lean 4 code contains too many comments (in lines)."
-    )
-    TACTIC_CODE_TOO_MANY_COMMENTS_CHAR = (
-        "Tactic code contains too many comments (in characters)."
-    )
-    TACTIC_CODE_TOO_MANY_COMMENTS_LINES = (
-        "Tactic code contains too many comments (in lines)."
-    )
+    MISSING_CONCLUSION_BLOCK = "Conclusion block is missing between the think block and lean4 code block."
+    LEAN4_CODE_NOT_START_WITH_STATEMENT = "Lean 4 code does not start with the formal statement."
+    LEAN4_CODE_TOO_MANY_COMMENTS_CHAR = "Lean 4 code contains too many comments (in characters)."
+    LEAN4_CODE_TOO_MANY_COMMENTS_LINES = "Lean 4 code contains too many comments (in lines)."
+    TACTIC_CODE_TOO_MANY_COMMENTS_CHAR = "Tactic code contains too many comments (in characters)."
+    TACTIC_CODE_TOO_MANY_COMMENTS_LINES = "Tactic code contains too many comments (in lines)."
     TACTIC_CODE_TOO_MANY_LINES = "Tactic code contains too many lines."
     TACTIC_BLOCK_FORMATTING_ERROR = "Tactic block formatting error."
     TACTICS_LEAN4_NOT_MATCH = "Tactics and Lean4 code do not match."
@@ -397,9 +385,7 @@ def check_subcode(subcode: str, final_code: str) -> bool:
     return n_lines_in_final / n_lines > 0.6
 
 
-def intersection_over_union(
-    code_blocks: list[str], final_code: str, use_final_only: bool = False
-) -> float:
+def intersection_over_union(code_blocks: list[str], final_code: str, use_final_only: bool = False) -> float:
     """
     Compute the intersection over union score between the code blocks and the final code.
     Args:
@@ -497,9 +483,7 @@ def is_index_commented(lean4_code: str, index: int) -> bool:
         return False
 
     # Check if inside a block comment
-    block_comments = [
-        (m.start(), m.end()) for m in re.finditer(r"/-.*?-/", lean4_code, re.DOTALL)
-    ]
+    block_comments = [(m.start(), m.end()) for m in re.finditer(r"/-.*?-/", lean4_code, re.DOTALL)]
     for start, end in block_comments:
         if start <= index < end:
             return True  # Inside a block comment
@@ -540,7 +524,6 @@ def extract_proof_from_text(output: str, formal_statement: str) -> str:
     lean4_codes = re.findall(r"```lean4\n(.*?)\n```", output, re.DOTALL)
 
     for lean4_code in reversed(lean4_codes):
-
         if theorem_statement in lean4_code:
             # Find the starting position of theorem_statement in the original lean4_code
             theorem_start = lean4_code.find(theorem_statement)
@@ -554,9 +537,7 @@ def extract_proof_from_text(output: str, formal_statement: str) -> str:
             # Search for `:= by` only after the theorem statement
             match = re.search(r":=\s*by", lean4_code[theorem_start:])
             if match:
-                proof_start = (
-                    theorem_start + match.end()
-                )  # Adjust index relative to original string
+                proof_start = theorem_start + match.end()  # Adjust index relative to original string
 
                 return formal_statement + lean4_code[proof_start:]
 

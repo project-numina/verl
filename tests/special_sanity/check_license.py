@@ -33,7 +33,7 @@ license_headers = [
     license_head_modelbest,
     license_head_amazon,
     license_head_facebook,
-    license_head_numina
+    license_head_numina,
 ]
 
 

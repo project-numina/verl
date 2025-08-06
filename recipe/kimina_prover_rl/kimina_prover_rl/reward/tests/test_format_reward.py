@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import pytest
-
 from kimina_prover_rl.reward.format_reward import FormatError, FormatReward
 
 
@@ -37,44 +36,34 @@ def reward_checker():
 def test_sorry_dropped(reward_checker):
     statement = "theorem T : A := by sorry"
     output = "theorem T : A := by\n  sorry"
-    fmt_err, _, _ = reward_checker.check_one_turn_format_error(
-        output, 1, None, statement
-    )
+    fmt_err, _, _ = reward_checker.check_one_turn_format_error(output, 1, None, statement)
     assert fmt_err != FormatError.LEAN4_CODE_NOT_START_WITH_STATEMENT
 
 
 def test_import_and_open_ignored(reward_checker):
     statement = "import Mathlib\n\nopen Real\n\ntheorem T : A := by sorry"
     output = "import Mathlib\n\nopen Real\n\ntheorem T : A := by\n  sorry"
-    fmt_err, _, _ = reward_checker.check_one_turn_format_error(
-        output, 1, None, statement
-    )
+    fmt_err, _, _ = reward_checker.check_one_turn_format_error(output, 1, None, statement)
     assert fmt_err != FormatError.LEAN4_CODE_NOT_START_WITH_STATEMENT
 
 
 def test_comment_block_removed(reward_checker):
     statement = "/- comment -/\n\ntheorem T : A := by sorry"
     output = "theorem T : A := by\n  sorry"
-    fmt_err, _, _ = reward_checker.check_one_turn_format_error(
-        output, 1, None, statement
-    )
+    fmt_err, _, _ = reward_checker.check_one_turn_format_error(output, 1, None, statement)
     assert fmt_err != FormatError.LEAN4_CODE_NOT_START_WITH_STATEMENT
 
 
 def test_multi_line_formatting(reward_checker):
     statement = "theorem T :\n  A := by sorry"
     output = "theorem T :\n  A := by\n  sorry"
-    fmt_err, _, _ = reward_checker.check_one_turn_format_error(
-        output, 1, None, statement
-    )
+    fmt_err, _, _ = reward_checker.check_one_turn_format_error(output, 1, None, statement)
     assert fmt_err != FormatError.LEAN4_CODE_NOT_START_WITH_STATEMENT
 
 
 def test_type_annotation(reward_checker):
     statement = "theorem T : IsGreatest (image g (Icc 0 (4/3))) (Real.sqrt 3 / 2) :="
-    output = (
-        "theorem T : IsGreatest (image g (Icc 0 (4/3 : ℝ))) (Real.sqrt 3 / 2) := by"
-    )
+    output = "theorem T : IsGreatest (image g (Icc 0 (4/3 : ℝ))) (Real.sqrt 3 / 2) := by"
     assert (
         reward_checker.check_one_turn_format_error(output, 1, None, statement)
         != FormatError.LEAN4_CODE_NOT_START_WITH_STATEMENT
@@ -84,9 +73,7 @@ def test_type_annotation(reward_checker):
 def test_axiom_not_allowed(reward_checker):
     statement = "theorem T : A := by"
     output = "axiom foo : A"
-    fmt_err, _, _ = reward_checker.check_one_turn_format_error(
-        output, 1, None, statement
-    )
+    fmt_err, _, _ = reward_checker.check_one_turn_format_error(output, 1, None, statement)
     print(f"Format error: {fmt_err}")
     assert fmt_err == FormatError.NO_VALID_LEAN4_CODE_BLOCK
 
@@ -94,9 +81,7 @@ def test_axiom_not_allowed(reward_checker):
 def test_missing_theorem(reward_checker):
     statement = "theorem T : A := by"
     output = "def foo := 42"
-    fmt_err, _, _ = reward_checker.check_one_turn_format_error(
-        output, 1, None, statement
-    )
+    fmt_err, _, _ = reward_checker.check_one_turn_format_error(output, 1, None, statement)
     assert fmt_err == FormatError.NO_VALID_LEAN4_CODE_BLOCK
 
 
@@ -115,9 +100,7 @@ open Real
 theorem T1 : A := by\n  sorry
 
 theorem T2 : B := by\n  sorry"""
-    fmt_err, _, _ = reward_checker.check_one_turn_format_error(
-        output, 1, None, statement
-    )
+    fmt_err, _, _ = reward_checker.check_one_turn_format_error(output, 1, None, statement)
     assert fmt_err != FormatError.LEAN4_CODE_NOT_START_WITH_STATEMENT
 
 
@@ -195,11 +178,7 @@ def test_repeated_line_thresholds(reward_checker, repeat_count, unique_extra, ex
     unique_lines = [f"aux {i}\n" for i in range(unique_extra)]
 
     text = (
-        "<think>\n"
-        + repeated_line * repeat_count
-        + "".join(unique_lines)
-        + "\n" * 10
-        + "```tactics\n"
+        "<think>\n" + repeated_line * repeat_count + "".join(unique_lines) + "\n" * 10 + "```tactics\n"
         "trivial\n"
         "```\n"
         "</think>\n"

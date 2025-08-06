@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 def split_proof_header(proof: str) -> tuple[str, str]:
     """
     Split the proof into header and context parts.
@@ -150,9 +151,7 @@ def find_goals_state(message: dict, feedback: dict) -> list | None:
     """
     if "pos" not in message or "endPos" not in message:
         return None
-    error_node = get_error_node(
-        feedback.get("infotree", []), message["pos"], message["endPos"]
-    )
+    error_node = get_error_node(feedback.get("infotree", []), message["pos"], message["endPos"])
     if error_node:
         error_node = error_node.get("node", {})
         goals_state = error_node.get("goalsBefore") or error_node.get("goalsAfter")
@@ -174,17 +173,13 @@ def filter_error_messages(feedback: dict, max_errors: int = 3) -> list:
         return []
 
     error_messages = [
-        msg
-        for msg in feedback["response"]["messages"]
-        if isinstance(msg, dict) and msg.get("severity") == "error"
+        msg for msg in feedback["response"]["messages"] if isinstance(msg, dict) and msg.get("severity") == "error"
     ]
 
     return error_messages[:max_errors]
 
 
-def format_error_output(
-    error: dict, error_index: int, proof_lines: list, response: dict
-) -> str:
+def format_error_output(error: dict, error_index: int, proof_lines: list, response: dict) -> str:
     """
     Format the error output for a given error message.
     This function extracts the error message, goals state, and code snippet
@@ -224,9 +219,7 @@ def format_error_output(
         output_dict["code snippet"] = snippet + "```"
 
     if output_dict["goals_state"]:
-        output += (
-            f"Goals state before error position: \n{output_dict['goals_state']}\n\n"
-        )
+        output += f"Goals state before error position: \n{output_dict['goals_state']}\n\n"
     output += f"Error message: \n{output_dict['error_message']}\n\n"
     if output_dict["code snippet"]:
         output += f"Lean 4 code snippet with error:\n{output_dict['code snippet']}\n"

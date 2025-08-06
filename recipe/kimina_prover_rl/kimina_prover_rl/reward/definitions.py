@@ -74,7 +74,6 @@ COMMON_STOPWORDS: set[str] = {
     "given",
     "given any",
     "given arbitrary",
-    "for",
     "each",
     "every",
     "all",
@@ -84,7 +83,6 @@ COMMON_STOPWORDS: set[str] = {
     "exists",
     "exist",
     "such",
-    "that",
     "wlog",
     "without loss",
     "we have",
@@ -116,7 +114,6 @@ COMMON_STOPWORDS: set[str] = {
     "iff",
     "since",
     "because",
-    "as",
     "given that",
     # Structural tags / references:
     "theorem",
@@ -148,7 +145,6 @@ COMMON_STOPWORDS: set[str] = {
     # Short inline fillers that add little semantic weight:
     "now",
     "next",
-    "then",
     "finally",
     "lastly",
     "again",

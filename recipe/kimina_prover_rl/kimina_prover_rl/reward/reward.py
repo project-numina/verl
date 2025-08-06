@@ -70,9 +70,7 @@ def formal_rewards(lean4_proofs, timeout=60) -> tuple[list[float], list[str]]:
         tuple[list[float], list[str]]: A tuple containing the rewards and tool feedbacks used for multiturn
     """
 
-    snippets = [
-        Snippet(id=str(idx), code=proof) for idx, proof in enumerate(lean4_proofs)
-    ]
+    snippets = [Snippet(id=str(idx), code=proof) for idx, proof in enumerate(lean4_proofs)]
 
     to_skip = [
         "Theorem statement couldn't be parsed from statement.",
@@ -105,14 +103,10 @@ def formal_rewards(lean4_proofs, timeout=60) -> tuple[list[float], list[str]]:
             continue
 
         rewards.append(0.0)
-        tool_feedback = create_tool_message(
-            formal_code=s.code, lean_feedback=result.model_dump()
-        )
+        tool_feedback = create_tool_message(formal_code=s.code, lean_feedback=result.model_dump())
         tool_feedbacks.append(tool_feedback)
 
-    assert len(rewards) == len(
-        snippets
-    ), "Unexpected number of rewards: got {}, expected {}".format(
+    assert len(rewards) == len(snippets), "Unexpected number of rewards: got {}, expected {}".format(
         len(rewards), len(snippets)
     )
 
@@ -144,32 +138,27 @@ def reward(
     prompts = [extra_info["prompt"] for extra_info in extra_infos]
     lean4_proofs = [
         extract_proof_from_text(solution_str, formal_statement)
-        for solution_str, formal_statement in zip(solution_strs, formal_statements)
+        for solution_str, formal_statement in zip(solution_strs, formal_statements, strict=False)
     ]
 
     format_func = FormatReward()
     format_errors = [
         format_reward(solution_str, formal_statement, prompt, format_func)
-        for solution_str, formal_statement, prompt in zip(
-            solution_strs, formal_statements, prompts
-        )
+        for solution_str, formal_statement, prompt in zip(solution_strs, formal_statements, prompts, strict=False)
     ]
     format_rws = [format_error == FormatError.NONE for format_error in format_errors]
 
     proof_rws, tool_feedbacks = formal_rewards(lean4_proofs)
 
-    scores = [
-        proof_rw * format_rw for proof_rw, format_rw in zip(proof_rws, format_rws)
-    ]
+    scores = [proof_rw * format_rw for proof_rw, format_rw in zip(proof_rws, format_rws, strict=False)]
 
     if not return_dict:
         return scores
 
     rws = []
     for lean4_proof, score, proof_rw, tool_feedback, solution_str, format_error in zip(
-        lean4_proofs, scores, proof_rws, tool_feedbacks, solution_strs, format_errors
+        lean4_proofs, scores, proof_rws, tool_feedbacks, solution_strs, format_errors, strict=False
     ):
-
         rws.append(
             {
                 "score": score,  # This is the final reward

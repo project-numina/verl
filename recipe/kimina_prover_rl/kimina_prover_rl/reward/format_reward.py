@@ -62,12 +62,8 @@ class FormatReward:
         """
         self.min_tactic_blocks_per_2k_chars = min_tactic_blocks_per_2k_chars
         self.min_lines_per_tactic_block = min_lines_per_tactic_block
-        self.tactic_block_comment_character_threshold = (
-            tactic_block_comment_character_threshold
-        )
-        self.lean_code_comment_character_threshold = (
-            lean_code_comment_character_threshold
-        )
+        self.tactic_block_comment_character_threshold = tactic_block_comment_character_threshold
+        self.lean_code_comment_character_threshold = lean_code_comment_character_threshold
         self.total_tactic_blocks_lines_threshold = total_tactic_blocks_lines_threshold
         self.comment_lines_ratio_threshold = comment_lines_ratio_threshold
         self.comment_length_ratio_threshold = comment_length_ratio_threshold
@@ -89,21 +85,14 @@ class FormatReward:
         Returns:
             tuple[FormatError, str]: A tuple containing the format error and the tactic code.
         """
-        code_lines, comment_lines, code_length, comment_length = (
-            compute_code_and_comment_length(
-                tactic_code,
-            )
+        code_lines, comment_lines, code_length, comment_length = compute_code_and_comment_length(
+            tactic_code,
         )
 
         lean4_code_lines = len(lean4_code.strip().split("\n"))
-        max_tactic_lines = max(
-            5, int(lean4_code_lines * self.total_tactic_blocks_lines_threshold)
-        )
+        max_tactic_lines = max(5, int(lean4_code_lines * self.total_tactic_blocks_lines_threshold))
 
-        if (
-            self.total_tactic_blocks_lines_threshold
-            and comment_lines + code_lines > max_tactic_lines
-        ):
+        if self.total_tactic_blocks_lines_threshold and comment_lines + code_lines > max_tactic_lines:
             return FormatError.TACTIC_CODE_TOO_MANY_LINES, tactic_code
 
         if (
@@ -113,16 +102,13 @@ class FormatReward:
             return FormatError.TACTIC_CODE_TOO_MANY_COMMENTS_LINES, tactic_code
         if (
             self.comment_length_ratio_threshold
-            and comment_length / (code_length + 1e-5)
-            > self.comment_length_ratio_threshold
+            and comment_length / (code_length + 1e-5) > self.comment_length_ratio_threshold
         ):
             return FormatError.TACTIC_CODE_TOO_MANY_COMMENTS_CHAR, tactic_code
 
         return FormatError.NONE, tactic_code
 
-    def _is_significant_thinking_line(
-        self, line: str, repeat_significant_min_tokens: int = 10
-    ) -> bool:
+    def _is_significant_thinking_line(self, line: str, repeat_significant_min_tokens: int = 10) -> bool:
         """
         Check if a line of thinking text is significant enough to be included
         in the final output.
@@ -140,9 +126,7 @@ class FormatReward:
         content_tokens = [t for t in tokens if t not in COMMON_STOPWORDS]
         return len(content_tokens) >= repeat_significant_min_tokens
 
-    def extract_thinking_text_outside_tactic_blocks(
-        self, think_block: str
-    ) -> list[str]:
+    def extract_thinking_text_outside_tactic_blocks(self, think_block: str) -> list[str]:
         """
         Return a list of *significant* natural-language lines inside <think> …,
         stripped of ` ```tactics` fences and trivial whitespace-only lines.
@@ -213,23 +197,16 @@ class FormatReward:
         thinking_lines = self.extract_thinking_text_outside_tactic_blocks(think_block)
         thinking_line_counts = Counter(thinking_lines)
         repeated_lines = [
-            line
-            for line, count in thinking_line_counts.items()
-            if count >= self.repeated_lines_threshold
+            line for line, count in thinking_line_counts.items() if count >= self.repeated_lines_threshold
         ]
 
         if repeated_lines:
             return FormatError.GENERATION_REPEATS, text
 
         # Check for number of tactics blocks
-        tactics_blocks = re.findall(
-            r"```tactics\n(.*?)\n```", text_after_think, re.DOTALL
-        )
+        tactics_blocks = re.findall(r"```tactics\n(.*?)\n```", text_after_think, re.DOTALL)
 
-        if (
-            self.tactics_blocks_threshold
-            and len(tactics_blocks) < self.tactics_blocks_threshold
-        ):
+        if self.tactics_blocks_threshold and len(tactics_blocks) < self.tactics_blocks_threshold:
             return FormatError.INSUFFICIENT_TACTICS_BLOCKS, text
 
         for tactic_block in tactics_blocks:
@@ -241,9 +218,7 @@ class FormatReward:
                 return format_error, text
 
         if num_turns == 1:
-            assert (
-                previous_formal_code is None
-            ), "previous_formal_code should be None for num_turns == 1"
+            assert previous_formal_code is None, "previous_formal_code should be None for num_turns == 1"
             if self.tactics_lean4_match_threshold is not None:
                 format_error, match_score = verify_tactics_match(text, method="iof")
                 if format_error != FormatError.NONE:
@@ -252,9 +227,7 @@ class FormatReward:
                 if match_score < self.tactics_lean4_match_threshold:
                     return FormatError.TACTICS_LEAN4_NOT_MATCH, text
         else:
-            assert (
-                previous_formal_code is not None
-            ), "previous_formal_code should not be None for num_turns > 1"
+            assert previous_formal_code is not None, "previous_formal_code should not be None for num_turns > 1"
             if self.tactics_lean4_match_threshold is not None:
                 format_error, match_score = verify_tactics_match(
                     text,
@@ -300,17 +273,13 @@ class FormatReward:
         formal_statements = [
             clean_and_normalize(stmt)
             for stmt in cleaned_text.split("\n\n")
-            if (clean_stmt := clean_and_normalize(stmt))
-            and not clean_stmt.startswith(("import", "set_option", "open"))
+            if (clean_stmt := clean_and_normalize(stmt)) and not clean_stmt.startswith(("import", "set_option", "open"))
         ]
         # Clean and normalize lean4 code
         lean4_code_no_comments = clean_and_normalize(lean4_code)
 
         # Check disallowed keywords
-        if (
-            "axiom" in lean4_code_no_comments
-            or "local_instance" in lean4_code_no_comments
-        ):
+        if "axiom" in lean4_code_no_comments or "local_instance" in lean4_code_no_comments:
             return FormatError.LEAN4_CODE_NOT_START_WITH_STATEMENT, lean4_code
 
         # Final inclusion check
@@ -320,10 +289,8 @@ class FormatReward:
         # Check if the code contains the keyword "sorry".
         # retrieve code after the formal statement
         proof_context = lean4_code[len(formal_statement) :]
-        code_lines, comment_lines, code_length, comment_length = (
-            compute_code_and_comment_length(
-                proof_context,
-            )
+        code_lines, comment_lines, code_length, comment_length = compute_code_and_comment_length(
+            proof_context,
         )
 
         if (
@@ -334,8 +301,7 @@ class FormatReward:
 
         if (
             self.comment_length_ratio_threshold
-            and comment_length / (code_length + 1e-5)
-            > self.comment_length_ratio_threshold
+            and comment_length / (code_length + 1e-5) > self.comment_length_ratio_threshold
         ):
             return FormatError.LEAN4_CODE_TOO_MANY_COMMENTS_CHAR, lean4_code
 
@@ -440,13 +406,11 @@ class FormatReward:
 
                 model_output = message["content"]
 
-                format_error, new_output, new_lean_code = (
-                    self.check_one_turn_format_error(
-                        model_output,
-                        num_turns=num_turns,
-                        previous_formal_code=previous_formal_code,
-                        formal_statement=formal_statement,
-                    )
+                format_error, new_output, new_lean_code = self.check_one_turn_format_error(
+                    model_output,
+                    num_turns=num_turns,
+                    previous_formal_code=previous_formal_code,
+                    formal_statement=formal_statement,
                 )
 
                 if format_error != FormatError.NONE:
