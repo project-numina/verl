@@ -24,4 +24,6 @@ jobs:
         run: pip install pytest
 
       - name: Run tests
-        run: pytest recipe/kimina_prover_rl
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/recipe/kimina_prover_rl
+          pytest recipe/kimina_prover_rl
