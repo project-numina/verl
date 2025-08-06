@@ -33,7 +33,12 @@ name: checkpoint_converter
 # latest version: Megatron-LM core_r0.11.0 https://github.com/NVIDIA/Megatron-LM/tree/core_r0.11.0
 
 on:
-  workflow_dispatch: # Disabled for numina
+  # Trigger the workflow on push or pull request,
+  # but only for the main branch
+  push:
+    branches: [] # Disabled for numina
+  pull_request:
+    branches: [] # Disabled for numina
     paths:
       - "**/*.py"
       # Other entrypoints
