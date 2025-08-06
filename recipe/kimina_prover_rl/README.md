@@ -50,21 +50,21 @@ cd recipe/kimina_prover_rl
 
 export LEAN_SERVER_API_URL="http://localhost:8000"
 ```
-If your server is configured with an API key you also need to export it:
+If your server is configured with an API key you’ll also need to export it:
 
 ```
 export LEAN_SERVER_API_KEY="your-api-key"
 ```
 
-To start training simply launch:
+To start training, simply run:
 
 ```
 sh kimina_prover_1.7B.sh
 ```
 
-This script will download the dataset and launch the training. Your can edit it to adapt it to your hardware and environment.
+This script will download the dataset and launch the training. You can edit it to adapt it to your hardware and environment.
 
-Alternatively, you can also launch a smaller version of the training for debugging purposes:
+Alternatively, you can run a smaller version of the training for debugging purposes:
 
 ```
 sh kimina_prover_1.7B_dry_run.sh
@@ -78,9 +78,9 @@ During training, you should see on wandb the mean response length growing and th
 
 ![alt text](images/formatting_errors.png)
 
-You should also see the best@8 mean performances growing on MiniF2F before and after error correction:
+You should also see the best@8 mean performance increasing on MiniF2F before and after error correction:
 
-![alt text](image.png)
+![alt text](images/best8_turn_performances.png)
 
 After training, the model achieves 76.63% Pass@32 on MiniF2F
 
