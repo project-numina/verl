@@ -2,8 +2,10 @@ name: Numina Unit Tests
 
 on:
   push:
-    branches: ['**']
+    branches:
+      - main
   pull_request:
+    branches: ['**']
   workflow_dispatch:
 
 jobs:
@@ -18,8 +20,8 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install local package (numina_rl)
-        run: cd recipe/kimina_prover_rl && pip install -e .
+      - name: Setup
+        run: cd recipe/kimina_prover_rl
 
       - name: Install test dependencies
         run: pip install -r pytest
