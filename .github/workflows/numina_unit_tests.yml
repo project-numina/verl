@@ -21,7 +21,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install test dependencies
-        run: pip install pytest
+        run: pip install -r recipe/kimina_prover_rl/requirements-test.txt
 
       - name: Run tests
         run: |
