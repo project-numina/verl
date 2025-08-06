@@ -19,7 +19,6 @@ from kimina_prover_rl.reward.format_reward import FormatError, FormatReward
 @pytest.fixture
 def reward_checker():
     return FormatReward(
-        proof_weight=0.5,
         total_tactic_blocks_lines_threshold=0.5,
         comment_lines_ratio_threshold=0.5,
         comment_length_ratio_threshold=0.5,
@@ -172,7 +171,11 @@ Thoughts...
     ],
 )
 def test_repeated_line_thresholds(reward_checker, repeat_count, unique_extra, expected):
-    repeated_line = "I will now try to apply `trivial`.\n"
+    # should contain a minimimum of 10 meaningful tokens to be considered significant
+    repeated_line = (
+        "The goal is `0 = 0`, which is clearly true by definition. "
+        "I will try `trivial` to let Lean solve it automatically.\n"
+    )
 
     # Optional extra lines to keep the repeat-ratio under the 0.30 cut-off
     unique_lines = [f"aux {i}\n" for i in range(unique_extra)]
