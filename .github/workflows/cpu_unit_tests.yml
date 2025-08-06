@@ -43,6 +43,7 @@ on:
     branches:
       - main
       - v0.*
+      - numina-release # TO REMOVE
     paths:
       - "**/*.py"
       - .github/workflows/cpu_unit_tests.yml
