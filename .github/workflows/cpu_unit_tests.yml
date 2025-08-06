@@ -37,13 +37,12 @@ on:
   # but only for the main branch
   push:
     branches:
-      - main
+      # - main # Disabled for numina
       - v0.*
   pull_request:
     branches:
-      - main
+      # - main # Disabled for numina
       - v0.*
-      - numina-release # TO REMOVE
     paths:
       - "**/*.py"
       - .github/workflows/cpu_unit_tests.yml
@@ -60,7 +59,7 @@ permissions:
 
 jobs:
   cpu_unit_tests:
-    runs-on: ubuntu-latest
+    runs-on: [L20x8]
     timeout-minutes: 20 # Increase this timeout value as needed
     env:
       HTTP_PROXY: ${{ secrets.PROXY_HTTP }}
